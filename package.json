@@ -1,0 +1,27 @@
+{
+  "name": "nodeos-boot",
+  "version": "0.0.0",
+  "description": "Basic mount and booting of NodeOS users filesystem",
+  "main": "index.js",
+  "bin": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/piranna/NodeOS-boot.git"
+  },
+  "keywords": [
+    "NodeOS"
+  ],
+  "author": "Jesús Leganés Combarro 'piranna' <piranna@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/piranna/NodeOS-boot/issues"
+  },
+  "homepage": "https://github.com/piranna/NodeOS-boot",
+  "dependencies": {
+    "src-errno": "^0.1.0",
+    "src-mount": "^0.1.0"
+  }
+}
