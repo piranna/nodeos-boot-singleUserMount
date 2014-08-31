@@ -58,11 +58,13 @@ if(process.argv.length > 2)
   }
 
   console.error(res,'Error '+errno.getErrorString()+' while mounting',path)
+
+
+  // Error booting, enable REPL
+
+  console.log('Starting REPL session')
+
+  require("repl").start("NodeOS> ")
 }
-
-
-// Error booting, enable REPL
-
-console.log('Starting REPL session')
-
-require("repl").start("NodeOS> ")
+else
+  console.warning('Users filesystem not defined')

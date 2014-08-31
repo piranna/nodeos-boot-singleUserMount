@@ -1,6 +1,6 @@
 {
   "name": "nodeos-boot",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Basic mount and booting of NodeOS users filesystem",
   "main": "index.js",
   "bin": "index.js",
