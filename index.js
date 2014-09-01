@@ -45,16 +45,46 @@ if(process.argv.length > 2)
   {
     // [ToDo] remove from rootfs the files only needed on boot to free memory
 
-    const HOME = '/home/root'
+    fs.readdirSync(path).forEach(function(file)
+    {
+      const HOME = path+'/'+file
 
-    var env = {}
-    for(var key in process.env)
-      env[key] = process.env[key];
+      var homeStat = fs.statSync(HOME)
+      if(!homeStat.isDirectory()) return;
 
-    env.HOME = HOME
-    env.PATH = HOME+'/bin:/usr/bin'
+      const initPath = HOME+'/init'
 
-    return spawn(HOME+'/bin/nsh', [], {cwd: HOME, detached: true, env: env, stdio: 'inherit'});
+      try
+      {
+        var initStat = fs.statSync(initPath)
+      }
+      catch(exception){return}
+      if(!initStat.isFile()) return;
+
+      if(homeStat.uid != initStat.uid || homeStat.gid != initStat.gid)
+        return console.warning(HOME+" uid & gid don't match with its init")
+
+      // Update env with user variables
+      var env = {}
+      for(var key in process.env)
+        env[key] = process.env[key];
+
+      env.HOME = HOME
+      env.PATH = HOME+'/bin:/usr/bin'
+
+      // Start user's init
+      spawn(initPath, [],
+      {
+        cwd: HOME,
+        stdio: 'inherit',
+        env: env,
+        detached: true,
+        uid: homeStat.uid,
+        gid: homeStat.gid
+      });
+    })
+
+    return
   }
 
   console.error(res,'Error '+errno.getErrorString()+' while mounting',path)
