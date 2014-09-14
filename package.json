@@ -1,7 +1,7 @@
 {
-  "name": "nodeos-boot",
-  "version": "0.0.2",
-  "description": "Basic mount and booting of NodeOS users filesystem",
+  "name": "nodeos-rootfs",
+  "version": "0.0.3",
+  "description": "Prepare and mount the NodeOS root filesystem",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/piranna/NodeOS-boot.git"
+    "url": "https://github.com/piranna/NodeOS-rootfs.git"
   },
   "keywords": [
     "NodeOS"
@@ -17,10 +17,11 @@
   "author": "Jesús Leganés Combarro 'piranna' <piranna@gmail.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/piranna/NodeOS-boot/issues"
+    "url": "https://github.com/piranna/NodeOS-rootfs/issues"
   },
-  "homepage": "https://github.com/piranna/NodeOS-boot",
+  "homepage": "https://github.com/piranna/NodeOS-rootfs",
   "dependencies": {
+    "rimraf": "^2.2.8",
     "src-errno": "^0.1.0",
     "src-mount": "^0.1.0"
   }
