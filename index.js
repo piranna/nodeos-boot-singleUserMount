@@ -1,81 +1,11 @@
 #!/usr/bin/env node
 
-var fs = require('fs')
-
-var spawn = require('child_process').spawn
-
 var rimraf = require('rimraf').sync;
 
-var errno = require('src-errno');
 var mount = require('src-mount');
 
+var utils = require('nodeos-mount-utils');
 
-function mkdirMount(dev, path, type, flags, extras)
-{
-  if(typeof flags == 'string')
-  {
-    extras = flags
-    flags = undefined
-  }
-
-  flags = flags || null
-  extras = extras || ''
-
-  try
-  {
-    fs.mkdirSync(path)
-//    fs.mkdirSync(path, '0000')
-  }
-  catch(error)
-  {
-    if(error.code != 'EEXIST') throw error
-  }
-
-  var res = mount.mount(dev, path, type, flags, extras);
-  if(res == -1) console.error('Error '+errno.getErrorString()+' while mounting',path)
-  return res
-}
-
-function execInit(HOME)
-{
-  var homeStat = fs.statSync(HOME)
-
-  const initPath = HOME+'/init'
-
-  try
-  {
-    var initStat = fs.statSync(initPath)
-  }
-  catch(exception)
-  {
-    return initPath+' not found'
-  }
-
-  if(!initStat.isFile())
-    return initPath+' is not a file';
-
-  if(homeStat.uid != initStat.uid || homeStat.gid != initStat.gid)
-    return HOME+" uid & gid don't match with its init"
-
-  // Update env with user variables
-  var env =
-  {
-    HOME: HOME,
-    PATH: HOME+'/bin:/usr/bin',
-    __proto__: process.env
-  }
-
-  // Start user's init
-  spawn(initPath, [],
-  {
-    cwd: HOME,
-    stdio: 'inherit',
-    env: env,
-    detached: true,
-    uid: homeStat.uid,
-    gid: homeStat.gid
-  });
-}
 
 function aufsroot(dev)
 {
@@ -83,17 +13,17 @@ function aufsroot(dev)
   var type   = 'ext2' //process.env.ROOTFSTYPE || 'auto';
   var extras = 'errors=remount-ro';
 
-  var res = mkdirMount(dev, path, type, extras);
+  var res = utils.mkdirMount(dev, path, type, extras);
   if(res == 0)
   {
     var path   = '/aufs';
     var type   = 'aufs';
     var extras = 'errors=remount-ro';
 
-    var res = mkdirMount('', path, type, extras);
+    var res = utils.mkdirMount('', path, type, extras);
     if(res == 0)
     {
-      var error = execInit('/root/init')
+      var error = utils.execInit('/root/init')
       if(!error) return;
 
       return error
@@ -111,49 +41,36 @@ rimraf('/lib/node_modules')
 
 // Mount kernel filesystems
 
-mkdirMount('udev', '/dev', 'devtmpfs', 'mode=0755')
-mkdirMount('proc', '/proc', 'proc', mount.flags.MS_NODEV
-                                  | mount.flags.MS_NOEXEC
-                                  | mount.flags.MS_NOSUID)
-mkdirMount('sysfs', '/sys', 'sysfs', mount.flags.MS_NODEV
-                                   | mount.flags.MS_NOEXEC
-                                   | mount.flags.MS_NOSUID)
-mkdirMount('tmpfs', '/tmp', 'tmpfs', mount.flags.MS_NODEV
-                                   | mount.flags.MS_NOEXEC
-                                   | mount.flags.MS_NOSUID, 'mode=1777')
+utils.mkdirMount('udev', '/dev', 'devtmpfs', 'mode=0755')
+utils.mkdirMount('proc', '/proc', 'proc', mount.flags.MS_NODEV
+                                        | mount.flags.MS_NOEXEC
+                                        | mount.flags.MS_NOSUID)
+utils.mkdirMount('sysfs', '/sys', 'sysfs', mount.flags.MS_NODEV
+                                         | mount.flags.MS_NOEXEC
+                                         | mount.flags.MS_NOSUID)
+utils.mkdirMount('tmpfs', '/tmp', 'tmpfs', mount.flags.MS_NODEV
+                                         | mount.flags.MS_NOEXEC
+                                         | mount.flags.MS_NOSUID, 'mode=1777')
 
 
-// Mount users filesystem
+// Mount root filesystem
 
-var ROOT = process.env.ROOT
-if(ROOT)
+var envDev = 'ROOT';
+var path   = '/root';
+var type   = 'ext4' //process.env.ROOTFSTYPE || 'auto';
+var extras = 'errors=remount-ro';
+
+utils.mountfs(envDev, path, type, extras, function(error)
 {
-  var dev    = ROOT;
-  var path   = '/root';
-  var type   = 'ext2' //process.env.ROOTFSTYPE || 'auto';
-  var extras = 'errors=remount-ro';
-
-  res = mkdirMount(dev, path, type, extras);
-  if(res == 0)
+  if(!error)
   {
-    delete process.env.ROOT
-
-    var error = execInit(path)
+    error = utils.execInit(path)
     if(!error) return;
-
-    console.warn(error)
   }
-}
-else
-  console.warn('ROOT filesystem not defined')
 
+  // Error mounting the root filesystem, enable REPL
 
-// Error booting, enable REPL
+  console.warn(error)
 
-console.log('Starting REPL session')
-
-require("repl").start("NodeOS-rootfs> ").on('exit', function()
-{
-  console.log('Got "exit" event from repl!');
-  process.exit(2);
-});
+  utils.startRepl('NodeOS-rootfs')
+})
