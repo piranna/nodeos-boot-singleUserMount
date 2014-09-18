@@ -42,12 +42,12 @@ rimraf('/lib/node_modules')
 // Mount kernel filesystems
 
 utils.mkdirMount('udev', '/dev', 'devtmpfs', 'mode=0755')
-utils.mkdirMount('proc', '/proc', 'proc', mount.flags.MS_NODEV
-                                        | mount.flags.MS_NOEXEC
-                                        | mount.flags.MS_NOSUID)
-utils.mkdirMount('sysfs', '/sys', 'sysfs', mount.flags.MS_NODEV
-                                         | mount.flags.MS_NOEXEC
-                                         | mount.flags.MS_NOSUID)
+// utils.mkdirMount('proc', '/proc', 'proc', mount.flags.MS_NODEV
+//                                         | mount.flags.MS_NOEXEC
+//                                         | mount.flags.MS_NOSUID)
+// utils.mkdirMount('sysfs', '/sys', 'sysfs', mount.flags.MS_NODEV
+//                                          | mount.flags.MS_NOEXEC
+//                                          | mount.flags.MS_NOSUID)
 utils.mkdirMount('tmpfs', '/tmp', 'tmpfs', mount.flags.MS_NODEV
                                          | mount.flags.MS_NOEXEC
                                          | mount.flags.MS_NOSUID, 'mode=1777')
@@ -58,9 +58,10 @@ utils.mkdirMount('tmpfs', '/tmp', 'tmpfs', mount.flags.MS_NODEV
 var envDev = 'ROOT';
 var path   = '/root';
 var type   = 'ext4' //process.env.ROOTFSTYPE || 'auto';
+var flags  = mount.flags.MS_NODEV | mount.flags.MS_NOSUID;
 var extras = 'errors=remount-ro';
 
-utils.mountfs(envDev, path, type, extras, function(error)
+utils.mountfs(envDev, path, type, flags, extras, function(error)
 {
   if(!error)
   {
