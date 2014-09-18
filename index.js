@@ -32,6 +32,11 @@ function aufsroot(dev)
 }
 
 
+// Change umask system wide so new files are accesible ONLY by its owner
+
+process.umask(0077);
+
+
 // Remove from rootfs the files only needed on boot to free memory
 
 rimraf('/init')
