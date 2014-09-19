@@ -70,7 +70,8 @@ utils.mountfs(envDev, path, type, flags, extras, function(error)
 {
   if(!error)
   {
-    error = utils.execInit(path)
+    var argv = process.argv.slice(2)
+    error = utils.execInit(path, argv)
     if(!error) return;
   }
 

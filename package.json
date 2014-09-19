@@ -1,6 +1,6 @@
 {
   "name": "nodeos-rootfs",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Prepare and mount the NodeOS root filesystem",
   "main": "index.js",
   "bin": "index.js",
@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/piranna/NodeOS-rootfs",
   "dependencies": {
-    "nodeos-mount-utils": "^0.0.3",
+    "nodeos-mount-utils": "^0.0.4",
     "rimraf": "^2.2.8",
     "src-mount": "^0.1.0"
   }
