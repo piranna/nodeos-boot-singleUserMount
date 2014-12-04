@@ -1,5 +1,5 @@
 {
-  "name": "nodeos-rootfs",
+  "name": "nodeos-mount-rootfs",
   "version": "0.0.11",
   "description": "Prepare and mount the NodeOS root filesystem",
   "main": "index.js",
