@@ -25,7 +25,7 @@ function overlayfsroot(envDev)
     if(!error)
     {
       // Craft overlayed filesystem
-      var type   = 'overlayfs';
+      var type   = 'overlay';
 //      var extras = 'lowerdir='+pathRootfs+':/';
       var extras = 'lowerdir=/,upperdir='+pathRootfs+'/rootfs,workdir='+pathRootfs+'/workdir';
 
