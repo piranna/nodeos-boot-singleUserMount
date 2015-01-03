@@ -9,21 +9,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/piranna/NodeOS-rootfs.git"
+    "url": "https://github.com/NodeOS/nodeos-mount-rootfs.git"
   },
   "keywords": [
     "NodeOS"
   ],
   "author": "Jesús Leganés Combarro 'piranna' <piranna@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/piranna/NodeOS-rootfs/issues"
+    "url": "https://github.com/NodeOS/nodeos-rootfs/issues"
   },
-  "homepage": "https://github.com/piranna/NodeOS-rootfs",
+  "homepage": "https://github.com/NodeOS/nodeos-mount-rootfs",
   "dependencies": {
     "nodeos-mount-utils": "^0.0.7",
-    "posix": "^1.0.4",
+    "posix": "netlovers/node-posix",
     "rimraf": "^2.2.8",
-    "src-mount": "^0.1.0"
+    "nodeos-mount": "netlovers/nodeos-mount"
   }
 }
