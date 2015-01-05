@@ -8,20 +8,26 @@ var mount = require('nodeos-mount');
 var utils = require('nodeos-mount-utils');
 
 
-const pathRootfs    = '/.rootfs';
-const pathOverlayfs = '/.overlayfs';
+const pathRootfs  = '/.rootfs';
+const pathOverlay = '/.overlay';
 
 
 function onerror(error)
 {
   // Error mounting the root filesystem or executing init, enable REPL
-  console.warn(error)
+  console.trace(error)
   utils.startRepl('NodeOS-mount-rootfs')
 }
 
+function onerror_nodev(error)
+{
+  if(error) console.warn(error);
+}
+
+
 function overlayfsroot(envDev)
 {
-  var flags  = mount.flags.MS_NODEV | mount.flags.MS_NOSUID;
+  var flags  = mount.MS_NODEV | mount.MS_NOSUID;
 
   // Mount root filesystem
   var type   = process.env.ROOTFSTYPE || 'auto';
@@ -33,7 +39,7 @@ function overlayfsroot(envDev)
 
     // Craft overlayed filesystem
     var type   = 'overlay';
-//      var extras = {lowerdir: pathRootfs};
+//    var extras = {lowerdir: pathRootfs};
     var extras =
     {
       lowerdir: '/',
@@ -41,47 +47,45 @@ function overlayfsroot(envDev)
       workdir : pathRootfs+'/workdir'
     };
 
-    utils.mkdirMount('', pathOverlayfs, type, extras, function(error)
-//      utils.mkdirMount('', pathOverlayfs, type, mount.flags.MS_RDONLY, extras, function(error)
+    utils.mkdirMount('', pathOverlay, type, extras, function(error)
+//    utils.mkdirMount('', pathOverlay, type, mount.MS_RDONLY, extras, function(error)
     {
       if(error) return onerror(error)
 
       var path  = '/';
 
       // Re-mount initram as read-only
-      var flags = mount.flags.MS_REMOUNT | mount.flags.MS_RDONLY;
+      var flags = mount.MS_REMOUNT | mount.MS_RDONLY;
 
       mount.mount('', path, flags, function(error)
       {
         if(error)
         {
           console.error('Error re-mounting '+path+' as read-only')
-          return onerror(error)
+//          return onerror(error)
         }
 
         // Move kernel filesystems to overlayed filesystem
-        mount.mount('/dev' , pathOverlayfs+'/dev' , mount.flags.MS_MOVE);
-        mount.mount('/proc', pathOverlayfs+'/proc', mount.flags.MS_MOVE);
-//        mount.mount('/sys' , pathOverlayfs+'/sys' , mount.flags.MS_MOVE);
-        mount.mount('/tmp' , pathOverlayfs+'/tmp' , mount.flags.MS_MOVE);
+        mount.mount('/dev' , pathOverlay+'/dev' , mount.MS_MOVE, onerror_nodev);
+        mount.mount('/proc', pathOverlay+'/proc', mount.MS_MOVE, onerror_nodev);
+//        mount.mount('/sys' , pathOverlay+'/sys' , mount.MS_MOVE, onerror_nodev);
+        mount.mount('/tmp' , pathOverlay+'/tmp' , mount.MS_MOVE, onerror_nodev);
 
-        // Move overlayed filesytem to /
-        process.chdir(pathOverlayfs)
-        mount.mount('.', path, mount.flags.MS_MOVE, function(error)
+        // Move overlayed filesytem
+        process.chdir(pathOverlay)
+        mount.mount('.', path, mount.MS_MOVE, function(error)
         {
           if(error)
           {
-            console.error('Error moving overlayed filesystem to /')
+            console.error('Error moving overlayed filesystem to '+path)
             return onerror(error)
           }
 
           chroot('.')
 
           // Execute init
-          var argv = process.argv.slice(2)
-          var error = utils.execInit('/root', argv)
-//          var error = utils.execInit(path, argv)
-          if(error) onerror(error);
+          utils.execInit('/root', process.argv.slice(2), onerror)
+//          utils.execInit(path, process.argv.slice(2), onerror)
         });
       });
     });
@@ -93,18 +97,19 @@ function overlayfsroot(envDev)
 process.umask(0066);
 
 // Remove from rootfs the files only needed on boot to free memory
-//rimraf('/bin')
+rimraf('/bin/century')
+rimraf('/bin/nodeos-mount-rootfs')
 rimraf('/init')
-//rimraf('/lib/node_modules')
+rimraf('/lib/node_modules')
 rimraf('/sbin')
 
 // Mount kernel filesystems
-var flags = mount.flags.MS_NODEV | mount.flags.MS_NOEXEC | mount.flags.MS_NOSUID
+var flags = mount.MS_NODEV | mount.MS_NOEXEC | mount.MS_NOSUID
 
-utils.mkdirMount('udev' , '/dev' , 'devtmpfs', 'mode=0755')
-utils.mkdirMount('proc' , '/proc', 'proc'  , flags)
-// utils.mkdirMount('sysfs', '/sys', 'sysfs', flags)
-utils.mkdirMount('tmpfs', '/tmp' , 'tmpfs' , flags, 'mode=1777')
+utils.mkdirMount('udev' , '/dev' , 'devtmpfs', {mode: 0755}, onerror_nodev)
+utils.mkdirMount('proc' , '/proc', 'proc'  , flags, onerror_nodev)
+// utils.mkdirMount('sysfs', '/sys', 'sysfs', flags, onerror_nodev)
+utils.mkdirMount('tmpfs', '/tmp' , 'tmpfs' , flags, {mode: 1777}, onerror_nodev)
 
 // Mount root filesystem
 overlayfsroot('ROOT')
