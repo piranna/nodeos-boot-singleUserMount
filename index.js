@@ -66,10 +66,10 @@ function overlayfsroot(envDev)
         }
 
         // Move kernel filesystems to overlayed filesystem
-        mount.mount('/dev' , pathOverlay+'/dev' , mount.MS_MOVE, onerror_nodev);
-        mount.mount('/proc', pathOverlay+'/proc', mount.MS_MOVE, onerror_nodev);
-//        mount.mount('/sys' , pathOverlay+'/sys' , mount.MS_MOVE, onerror_nodev);
-        mount.mount('/tmp' , pathOverlay+'/tmp' , mount.MS_MOVE, onerror_nodev);
+        mount.mountSync('/dev' , pathOverlay+'/dev' , mount.MS_MOVE);
+        mount.mountSync('/proc', pathOverlay+'/proc', mount.MS_MOVE);
+//        mount.mountSync('/sys' , pathOverlay+'/sys' , mount.MS_MOVE);
+        mount.mountSync('/tmp' , pathOverlay+'/tmp' , mount.MS_MOVE);
 
         // Move overlayed filesytem
         process.chdir(pathOverlay)
