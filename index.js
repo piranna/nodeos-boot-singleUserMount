@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
+var fs = require('fs')
+
 var chroot = require('posix').chroot;
 var rimraf = require('rimraf').sync;
 
 var mount = require('nodeos-mount');
-
 var utils = require('nodeos-mount-utils');
 
 
@@ -14,81 +15,193 @@ const pathOverlay = '/.overlay';
 
 function onerror(error)
 {
-  // Error mounting the root filesystem or executing init, enable REPL
-  console.trace(error)
-  utils.startRepl('NodeOS-mount-rootfs')
+  if(error)
+  {
+    // Error mounting the root filesystem or executing init, enable REPL
+    console.trace(error)
+    utils.startRepl('NodeOS-mount-filesystems')
+  }
 }
 
-function onerror_nodev(error)
+function linuxCmdline(cmdline)
 {
-  if(error) console.warn(error);
+  var result = {}
+
+  cmdline.split(' ').forEach(function(arg)
+  {
+    arg = arg.split('=');
+
+    var val = true
+    if(arg.length > 1)
+    {
+      val = arg.slice(1).join("=").split(',')
+      if(val.length === 1) val = val[0]
+    }
+
+    result[arg[0]] = val;
+  })
+
+  return result
 }
 
 
-function overlayfsroot(envDev)
+function overlay_tmpfs()
 {
+  const pathTmpfs = '/.tmpfs';
+
+  const flags = mount.MS_NODEV | mount.MS_NOSUID;
+
+  utils.mkdirMount('tmpfs', pathTmpfs, 'tmpfs', flags, function(error)
+  {
+    if(error) return onerror(error)
+
+    fs.mkdirSync(pathTmpfs+'/root'    , '0111')
+    fs.mkdirSync(pathTmpfs+'/.workdir', '0111')
+
+    // Craft overlayed filesystem
+    var type   = 'overlay';
+    var extras =
+    {
+      lowerdir: ['/', pathRootfs].join(':'),
+      upperdir: pathTmpfs+'/root',
+      workdir : pathTmpfs+'/.workdir'
+    };
+
+    utils.mkdirMount('', pathOverlay, type, extras, function(error)
+    {
+      if(error) return onerror(error)
+
+      // Move kernel filesystems to overlayed filesystem
+      utils.moveSync('/dev' , pathOverlay+'/dev');
+      utils.moveSync('/proc', pathOverlay+'/proc');
+//      utils.moveSync('/sys' , pathOverlay+'/sys');
+
+      // Move overlayed filesytem
+      process.chdir(pathOverlay)
+      utils.move('.', '/', function(error)
+      {
+        if(error)
+        {
+          console.error('Error moving overlayed filesystem to /')
+          return onerror(error)
+        }
+
+        chroot('.')
+
+        // Execute init
+        utils.execInit('/.', process.argv.slice(2), onerror)
+      });
+    });
+  })
+}
+
+function overlay_users(usersDev, type)
+{
+  // Mount users filesystem
   var flags  = mount.MS_NODEV | mount.MS_NOSUID;
-
-  // Mount root filesystem
-  var type   = process.env.ROOTFSTYPE || 'auto';
   var extras = {errors: 'remount-ro'};
 
-  utils.mountfs(envDev, pathRootfs, type, flags, extras, function(error)
+  utils.mkdirMount(usersDev, '/home', type, flags, extras, function(error)
   {
     if(error) return onerror(error)
 
     // Craft overlayed filesystem
     var type   = 'overlay';
-//    var extras = {lowerdir: pathRootfs};
     var extras =
     {
-      lowerdir: '/',
-      upperdir: pathRootfs+'/rootfs',
-      workdir : pathRootfs+'/workdir'
+      lowerdir: ['/', pathRootfs].join(':')
     };
 
     utils.mkdirMount('', pathOverlay, type, extras, function(error)
-//    utils.mkdirMount('', pathOverlay, type, mount.MS_RDONLY, extras, function(error)
     {
       if(error) return onerror(error)
 
-      var path  = '/';
+      // Move kernel filesystems to overlayed filesystem
+      utils.moveSync('/dev' , pathOverlay+'/dev');
+      utils.moveSync('/home', pathOverlay+'/home');
+      utils.moveSync('/proc', pathOverlay+'/proc');
+//      utils.moveSync('/sys' , pathOverlay+'/sys');
 
-      // Re-mount initram as read-only
-      var flags = mount.MS_REMOUNT | mount.MS_RDONLY;
-
-      mount.mount('', path, flags, function(error)
+      // Move overlayed filesytem
+      process.chdir(pathOverlay)
+      utils.move('.', '/', function(error)
       {
         if(error)
         {
-          console.error('Error re-mounting '+path+' as read-only')
-//          return onerror(error)
+          console.error('Error moving overlayed filesystem to /')
+          return onerror(error)
         }
 
-        // Move kernel filesystems to overlayed filesystem
-        mount.mountSync('/dev' , pathOverlay+'/dev' , mount.MS_MOVE);
-        mount.mountSync('/proc', pathOverlay+'/proc', mount.MS_MOVE);
-//        mount.mountSync('/sys' , pathOverlay+'/sys' , mount.MS_MOVE);
-        mount.mountSync('/tmp' , pathOverlay+'/tmp' , mount.MS_MOVE);
+        chroot('.')
 
-        // Move overlayed filesytem
-        process.chdir(pathOverlay)
-        mount.mount('.', path, mount.MS_MOVE, function(error)
+        // Mount users directories and exec their init files
+        fs.readdir('/home', function(error, users)
         {
-          if(error)
+          if(error) return onerror(error)
+
+          users.forEach(function(user)
           {
-            console.error('Error moving overlayed filesystem to '+path)
-            return onerror(error)
-          }
+            if(user[0] === '.') return;
 
-          chroot('.')
-
-          // Execute init
-          utils.execInit('/root', process.argv.slice(2), onerror)
-//          utils.execInit(path, process.argv.slice(2), onerror)
-        });
+            overlay_user(user)
+          })
+        })
       });
     });
+  })
+}
+
+function overlay_user(user)
+{
+  try
+  {
+    fs.mkdirSync('/home/.workdirs/'+user, '0111')
+  }
+  catch(error)
+  {
+    if(error.code != 'EEXIST') throw error
+  }
+
+  // Craft overlayed filesystem
+  var type   = 'overlay';
+  var extras =
+  {
+    lowerdir: '/',
+    upperdir: '/home/'+user,
+    workdir : '/home/.workdirs/'+user
+  };
+
+  mount.mount('', '/home/'+user, type, extras, function(error)
+  {
+    if(error) console.warn(error)
+
+    // Execute init
+    utils.execInit('/home/'+user, [], function(error)
+    {
+      if(error) console.warn(error)
+    })
+  });
+}
+
+
+function overlayfsroot(cmdline)
+{
+  const type  = cmdline.rootfstype || 'auto';
+  const flags = mount.MS_NODEV | mount.MS_NOSUID | mount.MS_RDONLY;
+
+  utils.mountfs_path(cmdline.root, pathRootfs, type, flags, function(error)
+  {
+    if(error) return onerror(error)
+
+    var usersDev = cmdline.users
+    if(usersDev)
+      overlay_users(usersDev, cmdline.usersfstype || 'auto')
+    else
+    {
+      console.warn('*** Users filesytem is not defined, will use a tmpfs instead  ***')
+      console.warn('*** ALL YOUR CHANGES WILL BE LOST IF NOT SAVED IN OTHER PLACE ***')
+      overlay_tmpfs()
+    }
   });
 }
 
@@ -106,10 +219,17 @@ rimraf('/sbin')
 // Mount kernel filesystems
 var flags = mount.MS_NODEV | mount.MS_NOEXEC | mount.MS_NOSUID
 
-utils.mkdirMount('udev' , '/dev' , 'devtmpfs', {mode: 0755}, onerror_nodev)
-utils.mkdirMount('proc' , '/proc', 'proc'  , flags, onerror_nodev)
-// utils.mkdirMount('sysfs', '/sys', 'sysfs', flags, onerror_nodev)
-utils.mkdirMount('tmpfs', '/tmp' , 'tmpfs' , flags, {mode: 1777}, onerror_nodev)
+utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function onerror_nodev(error)
+{
+  if(error) console.warn(error);
 
-// Mount root filesystem
-overlayfsroot('ROOT')
+  utils.mkdirMount('proc', '/proc', 'proc', flags, function onerror_nodev(error)
+  {
+    if(error) console.warn(error);
+
+    var cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', {encoding: 'utf8'}));
+
+    // Mount root filesystem
+    overlayfsroot(cmdline)
+  })
+})

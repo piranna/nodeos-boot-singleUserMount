@@ -1,7 +1,7 @@
 {
-  "name": "nodeos-mount-rootfs",
+  "name": "nodeos-mount-filesystems",
   "version": "0.0.30",
-  "description": "Prepare and mount the NodeOS root filesystem",
+  "description": "Prepare and mount the NodeOS filesystems",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
@@ -17,13 +17,13 @@
   "author": "Jesús Leganés Combarro 'piranna' <piranna@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NodeOS/nodeos-mount-rootfs/issues"
+    "url": "https://github.com/NodeOS/nodeos-mount-filesystems/issues"
   },
-  "homepage": "https://github.com/NodeOS/nodeos-mount-rootfs",
+  "homepage": "https://github.com/NodeOS/nodeos-mount-filesystems",
   "dependencies": {
-    "nodeos-mount-utils": "^0.0.15",
+    "nodeos-mount": "^0.1.13",
+    "nodeos-mount-utils": "^0.0.17",
     "posix": "netlovers/node-posix",
-    "rimraf": "^2.2.8",
-    "nodeos-mount": "^0.1.12"
+    "rimraf": "^2.2.8"
   }
 }
