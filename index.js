@@ -9,8 +9,8 @@ var mount = require('nodeos-mount');
 var utils = require('nodeos-mount-utils');
 
 
-const pathRootfs  = '/.rootfs';
-const pathOverlay = '/.overlay';
+const pathRootfs  = '/tmp/.rootfs';
+const pathOverlay = '/tmp/.overlay';
 
 
 function onerror(error)
@@ -55,8 +55,8 @@ function overlay_tmpfs()
   {
     if(error) return onerror(error)
 
-    fs.mkdirSync(pathTmpfs+'/root'    , '0111')
-    fs.mkdirSync(pathTmpfs+'/.workdir', '0111')
+    fs.mkdirSync(pathTmpfs+'/root'    , '0100')
+    fs.mkdirSync(pathTmpfs+'/.workdir', '0100')
 
     // Craft overlayed filesystem
     var type   = 'overlay';
@@ -155,7 +155,7 @@ function overlay_user(user)
 {
   try
   {
-    fs.mkdirSync('/home/.workdirs/'+user, '0111')
+    fs.mkdirSync('/home/.workdirs/'+user, '0100')
   }
   catch(error)
   {
@@ -175,10 +175,17 @@ function overlay_user(user)
   {
     if(error) console.warn(error)
 
-    // Execute init
-    utils.execInit('/home/'+user, [], function(error)
+    const flags = mount.MS_NODEV | mount.MS_NOSUID;
+
+    utils.mkdirMount('tmpfs', '/home/'+user+'/tmp', 'tmpfs', flags, function(error)
     {
-      if(error) console.warn(error)
+      if(error) return onerror(error)
+
+      // Execute init
+      utils.execInit('/home/'+user, [], function(error)
+      {
+        if(error) console.warn(error)
+      })
     })
   });
 }
@@ -211,7 +218,7 @@ process.umask(0066);
 
 // Remove from rootfs the files only needed on boot to free memory
 rimraf('/bin/century')
-rimraf('/bin/nodeos-mount-rootfs')
+rimraf('/bin/nodeos-mount-filesystems')
 rimraf('/init')
 rimraf('/lib/node_modules')
 rimraf('/sbin')
