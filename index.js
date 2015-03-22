@@ -2,15 +2,16 @@
 
 var fs = require('fs')
 
-var chroot = require('posix').chroot;
+var each   = require('async').each;
+var mkdirp = require('mkdirp').sync;
 var rimraf = require('rimraf').sync;
 
 var mount = require('nodeos-mount');
 var utils = require('nodeos-mount-utils');
 
 
-const pathRootfs  = '/tmp/.rootfs';
-const pathOverlay = '/tmp/.overlay';
+const flags = mount.MS_NODEV | mount.MS_NOSUID
+const HOME = '/tmp/users'
 
 
 function onerror(error)
@@ -45,121 +46,34 @@ function linuxCmdline(cmdline)
 }
 
 
-function overlay_tmpfs()
+function mountTmpExecInit(upperdir, callback)
 {
-  const pathTmpfs = '/.tmpfs';
-
-  const flags = mount.MS_NODEV | mount.MS_NOSUID;
-
-  utils.mkdirMount('tmpfs', pathTmpfs, 'tmpfs', flags, function(error)
+  utils.mkdirMount('tmpfs', upperdir+'/tmp', 'tmpfs', flags, function(error)
   {
-    if(error) return onerror(error)
+    if(error) return callback(error)
 
-    fs.mkdirSync(pathTmpfs+'/root'    , '0100')
-    fs.mkdirSync(pathTmpfs+'/.workdir', '0100')
-
-    // Craft overlayed filesystem
-    var type   = 'overlay';
-    var extras =
+    // Execute init
+    utils.execInit(upperdir, [], function(error)
     {
-      lowerdir: ['/', pathRootfs].join(':'),
-      upperdir: pathTmpfs+'/root',
-      workdir : pathTmpfs+'/.workdir'
-    };
+      if(error) console.warn(error)
 
-    utils.mkdirMount('', pathOverlay, type, extras, function(error)
-    {
-      if(error) return onerror(error)
-
-      // Move kernel filesystems to overlayed filesystem
-      utils.moveSync('/dev' , pathOverlay+'/dev');
-      utils.moveSync('/proc', pathOverlay+'/proc');
-//      utils.moveSync('/sys' , pathOverlay+'/sys');
-
-      // Move overlayed filesytem
-      process.chdir(pathOverlay)
-      utils.move('.', '/', function(error)
-      {
-        if(error)
-        {
-          console.error('Error moving overlayed filesystem to /')
-          return onerror(error)
-        }
-
-        chroot('.')
-
-        // Execute init
-        utils.execInit('/.', process.argv.slice(2), onerror)
-      });
-    });
+      callback()
+    })
   })
 }
 
-function overlay_users(usersDev, type)
+function overlay_user(usersFolder, user, callback)
 {
-  // Mount users filesystem
-  var flags  = mount.MS_NODEV | mount.MS_NOSUID;
-  var extras = {errors: 'remount-ro'};
+  var upperdir = usersFolder+'/'+user
+  var workdir  = usersFolder+'/.workdirs/'+user
 
-  utils.mkdirMount(usersDev, '/home', type, flags, extras, function(error)
-  {
-    if(error) return onerror(error)
-
-    // Craft overlayed filesystem
-    var type   = 'overlay';
-    var extras =
-    {
-      lowerdir: ['/', pathRootfs].join(':')
-    };
-
-    utils.mkdirMount('', pathOverlay, type, extras, function(error)
-    {
-      if(error) return onerror(error)
-
-      // Move kernel filesystems to overlayed filesystem
-      utils.moveSync('/dev' , pathOverlay+'/dev');
-      utils.moveSync('/home', pathOverlay+'/home');
-      utils.moveSync('/proc', pathOverlay+'/proc');
-//      utils.moveSync('/sys' , pathOverlay+'/sys');
-
-      // Move overlayed filesytem
-      process.chdir(pathOverlay)
-      utils.move('.', '/', function(error)
-      {
-        if(error)
-        {
-          console.error('Error moving overlayed filesystem to /')
-          return onerror(error)
-        }
-
-        chroot('.')
-
-        // Mount users directories and exec their init files
-        fs.readdir('/home', function(error, users)
-        {
-          if(error) return onerror(error)
-
-          users.forEach(function(user)
-          {
-            if(user[0] === '.') return;
-
-            overlay_user(user)
-          })
-        })
-      });
-    });
-  })
-}
-
-function overlay_user(user)
-{
   try
   {
-    fs.mkdirSync('/home/.workdirs/'+user, '0100')
+    mkdirp(workdir, '0100')
   }
   catch(error)
   {
-    if(error.code != 'EEXIST') throw error
+    if(error.code != 'EEXIST') return callback(error)
   }
 
   // Craft overlayed filesystem
@@ -167,49 +81,104 @@ function overlay_user(user)
   var extras =
   {
     lowerdir: '/',
-    upperdir: '/home/'+user,
-    workdir : '/home/.workdirs/'+user
+    upperdir: upperdir,
+    workdir : workdir
   };
 
-  mount.mount('', '/home/'+user, type, extras, function(error)
+  if(user === 'root') upperdir = '/tmp/root'
+
+  utils.mkdirMount('', upperdir, type, mount.MS_NOSUID, extras, function(error)
   {
-    if(error) console.warn(error)
+    if(error) return callback(error)
 
-    const flags = mount.MS_NODEV | mount.MS_NOSUID;
-
-    utils.mkdirMount('tmpfs', '/home/'+user+'/tmp', 'tmpfs', flags, function(error)
-    {
-      if(error) return onerror(error)
-
-      // Execute init
-      utils.execInit('/home/'+user, [], function(error)
+    if(user === 'root')
+      // Allow to root to access to users filesystem
+      utils.mkdirMove(HOME, upperdir+'/home', function(error)
       {
-        if(error) console.warn(error)
+        if(error) return callback(error)
+
+        mountTmpExecInit(upperdir, callback)
       })
-    })
+    else
+      mountTmpExecInit(upperdir, callback)
   });
+}
+
+function filterUser(user)
+{
+  return user[0] !== '.' && user !== 'root'
+}
+
+function overlay_users(usersFolder, callback)
+{
+  function onerror(error)
+  {
+    // Remove modules from initramfs
+    rimraf('/lib/node_modules')
+
+    callback(error)
+  }
+
+  // Mount users directories and exec their init files
+  fs.readdir(usersFolder, function(error, users)
+  {
+    if(error) return onerror(error)
+
+    each(users.filter(filterUser),
+         overlay_user.bind(undefined, usersFolder),
+         onerror)
+  })
 }
 
 
 function overlayfsroot(cmdline)
 {
-  const type  = cmdline.rootfstype || 'auto';
-  const flags = mount.MS_NODEV | mount.MS_NOSUID | mount.MS_RDONLY;
-
-  utils.mountfs_path(cmdline.root, pathRootfs, type, flags, function(error)
+  var usersDev = cmdline.users
+  if(usersDev)
   {
-    if(error) return onerror(error)
+    // Mount users filesystem
+    var type   = cmdline.usersfstype || 'auto'
+    var extras = {errors: 'remount-ro'};
 
-    var usersDev = cmdline.users
-    if(usersDev)
-      overlay_users(usersDev, cmdline.usersfstype || 'auto')
-    else
+    utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
     {
-      console.warn('*** Users filesytem is not defined, will use a tmpfs instead  ***')
-      console.warn('*** ALL YOUR CHANGES WILL BE LOST IF NOT SAVED IN OTHER PLACE ***')
-      overlay_tmpfs()
-    }
-  });
+      if(error) return onerror(error)
+
+      fs.readdir(HOME+'/root', function(error, users)
+      {
+        if(error)
+        {
+          if(error.code != 'ENOENT') return onerror(error)
+
+          // Users filesystem don't have a root user, just overlay users folders
+          overlay_users(HOME, onerror)
+        }
+        else
+        {
+          overlay_user(HOME, 'root', function(error)
+          {
+            if(error) return onerror(error)
+
+            overlay_users('/tmp/root/home', onerror)
+          })
+        }
+      })
+    })
+  }
+  else
+  {
+    console.warn('*************************************************************')
+    console.warn('* Users filesytem is not defined, will use a tmpfs instead. *')
+    console.warn('*                                                           *')
+    console.warn('* ALL YOUR CHANGES WILL BE LOST IF NOT SAVED IN OTHER PLACE *')
+    console.warn('*                                                           *')
+    console.warn('* You can find info about how to use an users filesystem at *')
+    console.warn('*                                                           *')
+    console.warn('*             https://github.com/NodeOS/NodeOS              *')
+    console.warn('*************************************************************')
+
+    utils.startRepl('NodeOS-mount-filesystems')
+  }
 }
 
 
@@ -220,17 +189,14 @@ process.umask(0066);
 rimraf('/bin/century')
 rimraf('/bin/nodeos-mount-filesystems')
 rimraf('/init')
-rimraf('/lib/node_modules')
 rimraf('/sbin')
 
 // Mount kernel filesystems
-var flags = mount.MS_NODEV | mount.MS_NOEXEC | mount.MS_NOSUID
-
-utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function onerror_nodev(error)
+utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
 {
   if(error) console.warn(error);
 
-  utils.mkdirMount('proc', '/proc', 'proc', flags, function onerror_nodev(error)
+  utils.mkdirMount('proc', '/proc', 'proc', flags, function(error)
   {
     if(error) console.warn(error);
 
