@@ -133,11 +133,11 @@ function overlay_users(usersFolder, callback)
 
 function overlayfsroot(cmdline)
 {
-  var usersDev = cmdline.users
+  var usersDev = cmdline.root
   if(usersDev)
   {
     // Mount users filesystem
-    var type   = cmdline.usersfstype || 'auto'
+    var type   = cmdline.rootfstype || 'auto'
     var extras = {errors: 'remount-ro'};
 
     utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
