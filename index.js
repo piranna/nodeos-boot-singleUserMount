@@ -130,41 +130,56 @@ function overlay_users(usersFolder, callback)
   })
 }
 
+function waitUntilExists(path, tries, callback)
+{
+  fs.exists(path, function(exists)
+  {
+    if(exists) return callback()
+
+    if(tries-- <= 0) return callback(new Error(path+' not exists'))
+
+    setTimeout(waitUntilExists, 1000, path, tries, callback)
+  })
+}
+
 
 function overlayfsroot(cmdline)
 {
   var usersDev = cmdline.root
   if(usersDev)
-  {
-    // Mount users filesystem
-    var type   = cmdline.rootfstype || 'auto'
-    var extras = {errors: 'remount-ro'};
-
-    utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
+    waitUntilExists(usersDev, 5, function(error)
     {
       if(error) return onerror(error)
 
-      fs.readdir(HOME+'/root', function(error, users)
+      // Mount users filesystem
+      var type   = cmdline.rootfstype || 'auto'
+      var extras = {errors: 'remount-ro'};
+
+      utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
       {
-        if(error)
-        {
-          if(error.code != 'ENOENT') return onerror(error)
+        if(error) return onerror(error)
 
-          // Users filesystem don't have a root user, just overlay users folders
-          overlay_users(HOME, onerror)
-        }
-        else
+        fs.readdir(HOME+'/root', function(error, users)
         {
-          overlay_user(HOME, 'root', function(error)
+          if(error)
           {
-            if(error) return onerror(error)
+            if(error.code != 'ENOENT') return onerror(error)
 
-            overlay_users('/tmp/root/home', onerror)
-          })
-        }
+            // Users filesystem don't have a root user, just overlay users folders
+            overlay_users(HOME, onerror)
+          }
+          else
+          {
+            overlay_user(HOME, 'root', function(error)
+            {
+              if(error) return onerror(error)
+
+              overlay_users('/tmp/root/home', onerror)
+            })
+          }
+        })
       })
     })
-  }
   else
   {
     console.warn('*************************************************************')
