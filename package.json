@@ -25,6 +25,7 @@
     "mkdirp": "^0.5.0",
     "nodeos-mount": "^0.1.13",
     "nodeos-mount-utils": "^0.0.21",
-    "rimraf": "^2.2.8"
+    "rimraf": "^2.2.8",
+    "prompt": "*"
   }
 }
