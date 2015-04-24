@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 var fs = require('fs')
 
 var each   = require('async').each;
@@ -142,6 +141,17 @@ function waitUntilExists(path, tries, callback)
   })
 }
 
+function askLocation (error)
+{
+  console.log('Could not find userfs');
+  // only load prompt when it is needed
+  var prompt = require('prompt');
+  prompt.start();
+  prompt.get('path to userfs', function (err, result) {
+    cmdline.root = result['path to userfs'];
+    return  overlayfsroot(cmdline);
+  });
+}
 
 function overlayfsroot(cmdline)
 {
@@ -149,7 +159,7 @@ function overlayfsroot(cmdline)
   if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
-      if(error) return onerror(error)
+      if(error) return askLocation(error);
 
       // Mount users filesystem
       var type   = cmdline.rootfstype || 'auto'
@@ -207,6 +217,8 @@ rimraf('/init')
 rimraf('/sbin')
 
 // Mount kernel filesystems
+var cmdline;
+
 utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
 {
   if(error) console.warn(error);
@@ -215,9 +227,9 @@ utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
   {
     if(error) console.warn(error);
 
-    var cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', {encoding: 'utf8'}));
+    cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', {encoding: 'utf8'}));
 
     // Mount root filesystem
     overlayfsroot(cmdline)
-  })
-})
+  });
+});
