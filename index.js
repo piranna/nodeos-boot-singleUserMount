@@ -45,18 +45,28 @@ function linuxCmdline(cmdline)
 }
 
 
-function mountTmpExecInit(upperdir, callback)
+function mountDevProcTmp_ExecInit(upperdir, callback)
 {
-  utils.mkdirMount('tmpfs', upperdir+'/tmp', 'tmpfs', flags, function(error)
+  mount.mount('/dev', upperdir+'/dev', mount.MS_BIND, function(error)
   {
     if(error) return callback(error)
 
-    // Execute init
-    utils.execInit(upperdir, [], function(error)
+    mount.mount('/proc', upperdir+'/proc', mount.MS_BIND, function(error)
     {
-      if(error) console.warn(error)
+      if(error) return callback(error)
 
-      callback()
+      mount.mount('tmpfs', upperdir+'/tmp', 'tmpfs', flags, function(error)
+      {
+        if(error) return callback(error)
+
+        // Execute init
+        utils.execInit(upperdir, [], function(error)
+        {
+          if(error) console.warn(error)
+
+          callback(null, upperdir)
+        })
+      })
     })
   })
 }
@@ -96,10 +106,10 @@ function overlay_user(usersFolder, user, callback)
       {
         if(error) return callback(error)
 
-        mountTmpExecInit(upperdir, callback)
+        mountDevProcTmp_ExecInit(upperdir, callback)
       })
     else
-      mountTmpExecInit(upperdir, callback)
+      mountDevProcTmp_ExecInit(upperdir, callback)
   });
 }
 
@@ -180,11 +190,11 @@ function overlayfsroot(cmdline)
           }
           else
           {
-            overlay_user(HOME, 'root', function(error)
+            overlay_user(HOME, 'root', function(error, upperdir)
             {
               if(error) return onerror(error)
 
-              overlay_users('/tmp/root/home', onerror)
+              overlay_users(upperdir+'/home', onerror)
             })
           }
         })
@@ -223,7 +233,7 @@ utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
 {
   if(error) console.warn(error);
 
-  utils.mkdirMount('proc', '/proc', 'proc', flags, function(error)
+  utils.mkdirMount('proc', '/proc', 'proc', flags, {hidepid: 2}, function(error)
   {
     if(error) console.warn(error);
 
