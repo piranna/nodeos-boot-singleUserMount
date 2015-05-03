@@ -13,6 +13,9 @@ const flags = mount.MS_NODEV | mount.MS_NOSUID
 const HOME = '/tmp/users'
 
 
+var cmdline;
+
+
 function onerror(error)
 {
   if(error)
@@ -151,16 +154,23 @@ function waitUntilExists(path, tries, callback)
   })
 }
 
-function askLocation (error)
+function pathToUserfs(err, result)
 {
-  console.log('Could not find userfs');
+  if(error) console.warn(error)
+
+  cmdline.root = result['path to userfs'];
+  return overlayfsroot(cmdline);
+}
+
+function askLocation(error)
+{
+  console.warn('Could not find userfs', error);
+
   // only load prompt when it is needed
   var prompt = require('prompt');
+
   prompt.start();
-  prompt.get('path to userfs', function (err, result) {
-    cmdline.root = result['path to userfs'];
-    return  overlayfsroot(cmdline);
-  });
+  prompt.get('path to userfs', pathToUserfs);
 }
 
 function overlayfsroot(cmdline)
@@ -179,6 +189,14 @@ function overlayfsroot(cmdline)
       {
         if(error) return onerror(error)
 
+        // Update environment variables
+        delete process.env['root']
+        delete process.env['rootfstype']
+        delete process.env['vga']
+
+        process.env['NODE_PATH'] = '/lib/node_modules'
+
+        // Check if users filesystem has an administrator account
         fs.readdir(HOME+'/root', function(error, users)
         {
           if(error)
@@ -227,8 +245,6 @@ rimraf('/init')
 rimraf('/sbin')
 
 // Mount kernel filesystems
-var cmdline;
-
 utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
 {
   if(error) console.warn(error);
