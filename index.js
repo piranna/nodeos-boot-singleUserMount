@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-var fs = require('fs')
+var fs    = require('fs')
+var spawn = require('child_process').spawn
 
 var async  = require('async')
 var mkdirp = require('mkdirp').sync
@@ -21,6 +22,7 @@ const HOME = '/tmp'
 
 
 var cmdline
+var ROOT_HOME = ''
 
 
 function onerror(error)
@@ -66,15 +68,10 @@ function mkdirMoveInfo(info, callback)
   utils.mkdirMove(info.source, info.target, callback)
 }
 
-function mountDevProcTmp_ExecInit(upperdir, callback)
+function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 {
-  each(
+  var arr =
   [
-    {
-      dev: '/dev',
-      path: upperdir+'/dev',
-      flags: MS_BIND
-    },
     {
       dev: '/proc',
       path: upperdir+'/proc',
@@ -86,9 +83,38 @@ function mountDevProcTmp_ExecInit(upperdir, callback)
       type: 'tmpfs',
       flags: flags
     }
-  ],
-  mkdirMountInfo,
-  function(error)
+  ]
+
+  if(isRoot)
+  {
+    var path = upperdir+'/dev'
+
+    try
+    {
+      mkdirp(path, '0000')
+    }
+    catch(error)
+    {
+      if(error.code != 'EEXIST') return callback(error)
+    }
+
+    spawn(__dirname+'/node_modules/.bin/exclfs', ['/dev', path],
+    {
+      detached: true,
+      stdio: 'inherit'
+    })
+    .on('error', console.trace.bind(console))
+    .unref()
+  }
+
+  else
+    arr.unshift({
+      dev: ROOT_HOME+'/dev',
+      path: upperdir+'/dev',
+      flags: MS_BIND
+    })
+
+  each(arr, mkdirMountInfo, function(error)
   {
     if(error) return callback(error)
 
@@ -149,16 +175,18 @@ function overlay_user(usersFolder, user, callback)
       {
         if(error) return callback(error)
 
-        mountDevProcTmp_ExecInit(HOME, function(error)
+        mountDevProcTmp_ExecInit(HOME, true, function(error)
         {
           if(error) return callback(error)
+
+          ROOT_HOME = HOME
 
           callback(null, HOME+'/home')
         })
       })
 
     else
-      mountDevProcTmp_ExecInit(upperdir, callback)
+      mountDevProcTmp_ExecInit(upperdir, false, callback)
   });
 }
 
