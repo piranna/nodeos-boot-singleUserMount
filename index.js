@@ -1,19 +1,23 @@
 #!/usr/bin/env node
+
 var fs = require('fs')
 
-var each   = require('async').each;
-var mkdirp = require('mkdirp').sync;
-var rimraf = require('rimraf').sync;
+var each   = require('async').each
+var mkdirp = require('mkdirp').sync
+var rimraf = require('rimraf').sync
 
-var mount = require('nodeos-mount');
-var utils = require('nodeos-mount-utils');
+var utils = require('nodeos-mount-utils')
+var flgs  = utils.flags
+
+const MS_BIND   = flgs.MS_BIND
+const MS_NODEV  = flgs.MS_NODEV
+const MS_NOSUID = flgs.MS_NOSUID
+
+const flags = MS_NODEV | MS_NOSUID
+const HOME = '/tmp'
 
 
-const flags = mount.MS_NODEV | mount.MS_NOSUID
-const HOME = '/tmp/users'
-
-
-var cmdline;
+var cmdline
 
 
 function onerror(error)
@@ -32,7 +36,7 @@ function linuxCmdline(cmdline)
 
   cmdline.split(' ').forEach(function(arg)
   {
-    arg = arg.split('=');
+    arg = arg.split('=')
 
     var val = true
     if(arg.length > 1)
@@ -41,35 +45,51 @@ function linuxCmdline(cmdline)
       if(val.length === 1) val = val[0]
     }
 
-    result[arg[0]] = val;
+    result[arg[0]] = val
   })
 
   return result
 }
 
 
+function mkdirMountInfo(mountInfo, callback)
+{
+  utils.mkdirMount(mountInfo.dev, mountInfo.path, mountInfo.type,
+                   mountInfo.flags, mountInfo.extras, callback)
+}
+
 function mountDevProcTmp_ExecInit(upperdir, callback)
 {
-  mount.mount('/dev', upperdir+'/dev', mount.MS_BIND, function(error)
+  each(
+  [
+    {
+      dev: '/dev',
+      path: upperdir+'/dev',
+      flags: MS_BIND
+    },
+    {
+      dev: '/proc',
+      path: upperdir+'/proc',
+      flags: MS_BIND
+    },
+    {
+      dev: 'tmpfs',
+      path: upperdir+'/tmp',
+      type: 'tmpfs',
+      flags: flags
+    }
+  ],
+  mkdirMountInfo,
+  function(error)
   {
     if(error) return callback(error)
 
-    mount.mount('/proc', upperdir+'/proc', mount.MS_BIND, function(error)
+    // Execute init
+    utils.execInit(upperdir, [], function(error)
     {
-      if(error) return callback(error)
+      if(error) console.warn(error)
 
-      mount.mount('tmpfs', upperdir+'/tmp', 'tmpfs', flags, function(error)
-      {
-        if(error) return callback(error)
-
-        // Execute init
-        utils.execInit(upperdir, [], function(error)
-        {
-          if(error) console.warn(error)
-
-          callback(null, upperdir)
-        })
-      })
+      callback()
     })
   })
 }
@@ -89,7 +109,7 @@ function overlay_user(usersFolder, user, callback)
   }
 
   // Craft overlayed filesystem
-  var type   = 'overlay';
+  var type   = 'overlay'
   var extras =
   {
     lowerdir: '/',
@@ -97,20 +117,33 @@ function overlay_user(usersFolder, user, callback)
     workdir : workdir
   };
 
-  if(user === 'root') upperdir = '/tmp/root'
+  if(user === 'root') upperdir = '/root'
 
-  utils.mkdirMount('', upperdir, type, mount.MS_NOSUID, extras, function(error)
+  utils.mkdirMount('', upperdir, type, MS_NOSUID, extras, function(error)
   {
     if(error) return callback(error)
 
     if(user === 'root')
+    {
       // Allow to root to access to users filesystem
       utils.mkdirMove(HOME, upperdir+'/home', function(error)
       {
         if(error) return callback(error)
 
-        mountDevProcTmp_ExecInit(upperdir, callback)
+        utils.mkdirMove(upperdir, HOME, function(error)
+        {
+          if(error) return callback(error)
+
+          mountDevProcTmp_ExecInit(HOME, function(error)
+          {
+            if(error) return callback(error)
+
+            callback(null, HOME+'/home')
+          })
+        })
       })
+    }
+
     else
       mountDevProcTmp_ExecInit(upperdir, callback)
   });
@@ -123,10 +156,15 @@ function filterUser(user)
 
 function overlay_users(usersFolder, callback)
 {
-  function onerror(error)
+  function done(error)
   {
-    // Remove modules from initramfs
-    rimraf('/lib/node_modules')
+    // Remove the modules from initramfs to free memory
+//    rimraf('/lib/node_modules')
+    rimraf('/lib/node_modules/century')
+    rimraf('/lib/node_modules/nodeos-mount-filesystems')
+
+    // Hide '/usr' folder (Is it an OverlayFS feature or a bug?)
+    rimraf('/usr')
 
     callback(error)
   }
@@ -134,11 +172,11 @@ function overlay_users(usersFolder, callback)
   // Mount users directories and exec their init files
   fs.readdir(usersFolder, function(error, users)
   {
-    if(error) return onerror(error)
+    if(error) return done(error)
 
     each(users.filter(filterUser),
          overlay_user.bind(undefined, usersFolder),
-         onerror)
+         done)
   })
 }
 
@@ -158,19 +196,19 @@ function pathToUserfs(err, result)
 {
   if(error) console.warn(error)
 
-  cmdline.root = result['path to userfs'];
-  return overlayfsroot(cmdline);
+  cmdline.root = result['path to userfs']
+  return overlayfsroot(cmdline)
 }
 
 function askLocation(error)
 {
-  console.warn('Could not find userfs', error);
+  console.warn('Could not find userfs', error)
 
   // only load prompt when it is needed
-  var prompt = require('prompt');
+  var prompt = require('prompt')
 
-  prompt.start();
-  prompt.get('path to userfs', pathToUserfs);
+  prompt.start()
+  prompt.get('path to userfs', pathToUserfs)
 }
 
 function overlayfsroot(cmdline)
@@ -179,25 +217,27 @@ function overlayfsroot(cmdline)
   if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
-      if(error) return askLocation(error);
+      if(error) return askLocation(error)
 
       // Mount users filesystem
       var type   = cmdline.rootfstype || 'auto'
-      var extras = {errors: 'remount-ro'};
+      var extras = {errors: 'remount-ro'}
 
       utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
       {
         if(error) return onerror(error)
 
         // Update environment variables
-        delete process.env['root']
-        delete process.env['rootfstype']
-        delete process.env['vga']
+        var env = process.env
 
-        process.env['NODE_PATH'] = '/lib/node_modules'
+        delete env['root']
+        delete env['rootfstype']
+        delete env['vga']
+
+        env['NODE_PATH'] = '/lib/node_modules'
 
         // Check if users filesystem has an administrator account
-        fs.readdir(HOME+'/root', function(error, users)
+        fs.readdir(HOME+'/root', function(error)
         {
           if(error)
           {
@@ -208,11 +248,11 @@ function overlayfsroot(cmdline)
           }
           else
           {
-            overlay_user(HOME, 'root', function(error, upperdir)
+            overlay_user(HOME, 'root', function(error, home)
             {
               if(error) return onerror(error)
 
-              overlay_users(upperdir+'/home', onerror)
+              overlay_users(home, onerror)
             })
           }
         })
@@ -236,26 +276,37 @@ function overlayfsroot(cmdline)
 
 
 // Change umask system wide so new files are accesible ONLY by its owner
-process.umask(0066);
+process.umask(0066)
 
-// Remove from rootfs the files only needed on boot to free memory
+// Remove from initramfs the files only needed on boot to free memory
 rimraf('/bin/century')
 rimraf('/bin/nodeos-mount-filesystems')
 rimraf('/init')
 rimraf('/sbin')
 
 // Mount kernel filesystems
-utils.mkdirMount('udev', '/dev', 'devtmpfs', {mode: 0755}, function(error)
+each(
+[
+  {
+    dev: 'udev',
+    path: '/dev',
+    type: 'devtmpfs'
+  },
+  {
+    dev: 'proc',
+    path: '/proc',
+    type: 'proc',
+    flags: flags,
+    extras: {hidepid: 2}
+  }
+],
+mkdirMountInfo,
+function(error)
 {
   if(error) console.warn(error);
 
-  utils.mkdirMount('proc', '/proc', 'proc', flags, {hidepid: 2}, function(error)
-  {
-    if(error) console.warn(error);
+  cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
 
-    cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', {encoding: 'utf8'}));
-
-    // Mount root filesystem
-    overlayfsroot(cmdline)
-  });
-});
+  // Mount root filesystem
+  overlayfsroot(cmdline)
+})

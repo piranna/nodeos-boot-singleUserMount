@@ -21,11 +21,10 @@
   },
   "homepage": "https://github.com/NodeOS/nodeos-mount-filesystems",
   "dependencies": {
-    "async": "^0.9.0",
-    "mkdirp": "^0.5.0",
-    "nodeos-mount": "^0.1.13",
-    "nodeos-mount-utils": "^0.0.21",
-    "rimraf": "^2.2.8",
+    "async": "^1.4.2",
+    "mkdirp": "^0.5.1",
+    "nodeos-mount-utils": "^0.0.25",
+    "rimraf": "^2.4.3",
     "prompt": "*"
   }
 }
