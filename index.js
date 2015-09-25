@@ -2,9 +2,12 @@
 
 var fs = require('fs')
 
-var each   = require('async').each
+var async  = require('async')
 var mkdirp = require('mkdirp').sync
 var rimraf = require('rimraf').sync
+
+var each       = async.each
+var eachSeries = async.eachSeries
 
 var utils = require('nodeos-mount-utils')
 var flgs  = utils.flags
@@ -52,10 +55,15 @@ function linuxCmdline(cmdline)
 }
 
 
-function mkdirMountInfo(mountInfo, callback)
+function mkdirMountInfo(info, callback)
 {
-  utils.mkdirMount(mountInfo.dev, mountInfo.path, mountInfo.type,
-                   mountInfo.flags, mountInfo.extras, callback)
+  utils.mkdirMount(info.dev, info.path, info.type, info.flags, info.extras,
+      callback)
+}
+
+function mkdirMoveInfo(info, callback)
+{
+  utils.mkdirMove(info.source, info.target, callback)
 }
 
 function mountDevProcTmp_ExecInit(upperdir, callback)
@@ -124,25 +132,30 @@ function overlay_user(usersFolder, user, callback)
     if(error) return callback(error)
 
     if(user === 'root')
-    {
       // Allow to root to access to users filesystem
-      utils.mkdirMove(HOME, upperdir+'/home', function(error)
+      eachSeries(
+      [
+        {
+          source: HOME,
+          target: upperdir+'/home'
+        },
+        {
+          source: upperdir,
+          target: HOME
+        }
+      ],
+      mkdirMoveInfo,
+      function(error)
       {
         if(error) return callback(error)
 
-        utils.mkdirMove(upperdir, HOME, function(error)
+        mountDevProcTmp_ExecInit(HOME, function(error)
         {
           if(error) return callback(error)
 
-          mountDevProcTmp_ExecInit(HOME, function(error)
-          {
-            if(error) return callback(error)
-
-            callback(null, HOME+'/home')
-          })
+          callback(null, HOME+'/home')
         })
       })
-    }
 
     else
       mountDevProcTmp_ExecInit(upperdir, callback)
