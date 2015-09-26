@@ -1,6 +1,6 @@
 {
   "name": "nodeos-mount-filesystems",
-  "version": "0.0.37",
+  "version": "0.0.38",
   "description": "Prepare and mount the NodeOS filesystems",
   "main": "index.js",
   "bin": "index.js",
@@ -22,6 +22,7 @@
   "homepage": "https://github.com/NodeOS/nodeos-mount-filesystems",
   "dependencies": {
     "async": "^1.4.2",
+    "exclfs": "^0.0.1",
     "mkdirp": "^0.5.1",
     "nodeos-mount-utils": "^0.0.25",
     "rimraf": "^2.4.3",

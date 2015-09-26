@@ -85,10 +85,10 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     }
   ]
 
+  var path = upperdir+'/dev'
+
   if(isRoot)
   {
-    var path = upperdir+'/dev'
-
     try
     {
       mkdirp(path, '0000')
@@ -98,19 +98,25 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
       if(error.code != 'EEXIST') return callback(error)
     }
 
-    spawn(__dirname+'/node_modules/.bin/exclfs', ['/dev', path],
+    var argv = [null, path, '-o', 'lowerLayer=/dev']
+    var options =
     {
       detached: true,
       stdio: 'inherit'
+    }
+
+    spawn(__dirname+'/node_modules/.bin/exclfs', argv, options)
+    .on('error', function(error)
+    {
+      if(error) console.error(error)
     })
-    .on('error', console.trace.bind(console))
     .unref()
   }
 
   else
     arr.unshift({
       dev: ROOT_HOME+'/dev',
-      path: upperdir+'/dev',
+      path: path,
       flags: MS_BIND
     })
 
