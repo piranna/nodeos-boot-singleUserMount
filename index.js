@@ -85,6 +85,24 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     }
   ]
 
+  function mountUserFilesystems()
+  {
+    each(arr, mkdirMountInfo, function(error)
+    {
+      if(error) return callback(error)
+
+  console.log('**mkdirMountInfo**')
+
+      // Execute init
+      utils.execInit(upperdir, [], function(error)
+      {
+        if(error) console.warn(error)
+
+        callback()
+      })
+    })
+  }
+
   var path = upperdir+'/dev'
 
   if(isRoot)
@@ -106,32 +124,19 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     }
 
     spawn(__dirname+'/node_modules/.bin/exclfs', argv, options)
-    .on('error', function(error)
-    {
-      if(error) console.error(error)
-    })
+    .on('error', console.error.bind(console))
     .unref()
+
+    return waitUntilDevMounted(path, 5, mountUserFilesystems)
   }
 
-  else
-    arr.unshift({
-      dev: ROOT_HOME+'/dev',
-      path: path,
-      flags: MS_BIND
-    })
-
-  each(arr, mkdirMountInfo, function(error)
-  {
-    if(error) return callback(error)
-
-    // Execute init
-    utils.execInit(upperdir, [], function(error)
-    {
-      if(error) console.warn(error)
-
-      callback()
-    })
+  arr.unshift({
+    dev: ROOT_HOME+'/dev',
+    path: path,
+    flags: MS_BIND
   })
+
+  mountUserFilesystems()
 }
 
 function overlay_user(usersFolder, user, callback)
@@ -236,6 +241,20 @@ function waitUntilExists(path, tries, callback)
     if(tries-- <= 0) return callback(new Error(path+' not exists'))
 
     setTimeout(waitUntilExists, 1000, path, tries, callback)
+  })
+}
+
+function waitUntilDevMounted(path, tries, callback)
+{
+  fs.readdir(path, function(error, files)
+  {
+    if(error) return callback(error)
+
+    if(files.length > 1) return callback()
+
+    if(tries-- <= 0) return callback(new Error(path+' not mounted'))
+
+    setTimeout(waitUntilDevMounted, 1000, path, tries, callback)
   })
 }
 
