@@ -4,7 +4,7 @@ var fs    = require('fs')
 var spawn = require('child_process').spawn
 
 var async  = require('async')
-var mkdirp = require('mkdirp').sync
+var mkdirp = require('mkdirp')
 var rimraf = require('rimraf').sync
 
 var each       = async.each
@@ -91,8 +91,6 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     {
       if(error) return callback(error)
 
-  console.log('**mkdirMountInfo**')
-
       // Execute init
       utils.execInit(upperdir, [], function(error)
       {
@@ -105,31 +103,27 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 
   var path = upperdir+'/dev'
 
+  // Root user
   if(isRoot)
-  {
-    try
+    return mkdirp(path, '0000', function(error)
     {
-      mkdirp(path, '0000')
-    }
-    catch(error)
-    {
-      if(error.code != 'EEXIST') return callback(error)
-    }
+      if(error && error.code !== 'EEXIST') return callback(error)
 
-    var argv = [null, path, '-o', 'lowerLayer=/dev']
-    var options =
-    {
-      detached: true,
-      stdio: 'inherit'
-    }
+      var argv = [null, path, '-o', 'lowerLayer=/dev']
+      var options =
+      {
+        detached: true,
+        stdio: 'inherit'
+      }
 
-    spawn(__dirname+'/node_modules/.bin/exclfs', argv, options)
-    .on('error', console.error.bind(console))
-    .unref()
+      spawn(__dirname+'/node_modules/.bin/exclfs', argv, options)
+      .on('error', console.error.bind(console))
+      .unref()
 
-    return waitUntilDevMounted(path, 5, mountUserFilesystems)
-  }
+      waitUntilDevMounted(path, 5, mountUserFilesystems)
+    })
 
+  // Regular user
   arr.unshift({
     dev: ROOT_HOME+'/dev',
     path: path,
@@ -144,61 +138,57 @@ function overlay_user(usersFolder, user, callback)
   var upperdir = usersFolder+'/'+user
   var workdir  = usersFolder+'/.workdirs/'+user
 
-  try
+  mkdirp(workdir, '0100', function(error)
   {
-    mkdirp(workdir, '0100')
-  }
-  catch(error)
-  {
-    if(error.code != 'EEXIST') return callback(error)
-  }
+    if(error && error.code !== 'EEXIST') return callback(error)
 
-  // Craft overlayed filesystem
-  var type   = 'overlay'
-  var extras =
-  {
-    lowerdir: '/',
-    upperdir: upperdir,
-    workdir : workdir
-  };
+    // Craft overlayed filesystem
+    var type   = 'overlay'
+    var extras =
+    {
+      lowerdir: '/',
+      upperdir: upperdir,
+      workdir : workdir
+    };
 
-  if(user === 'root') upperdir = '/root'
+    if(user === 'root') upperdir = '/root'
 
-  utils.mkdirMount('', upperdir, type, MS_NOSUID, extras, function(error)
-  {
-    if(error) return callback(error)
+    utils.mkdirMount('', upperdir, type, MS_NOSUID, extras, function(error)
+    {
+      if(error) return callback(error)
 
-    if(user === 'root')
-      // Allow to root to access to users filesystem
-      eachSeries(
-      [
-        {
-          source: HOME,
-          target: upperdir+'/home'
-        },
-        {
-          source: upperdir,
-          target: HOME
-        }
-      ],
-      mkdirMoveInfo,
-      function(error)
-      {
-        if(error) return callback(error)
-
-        mountDevProcTmp_ExecInit(HOME, true, function(error)
+      if(user === 'root')
+        // Allow to root to access to users filesystem
+        eachSeries(
+        [
+          {
+            source: HOME,
+            target: upperdir+'/home'
+          },
+          {
+            source: upperdir,
+            target: HOME
+          }
+        ],
+        mkdirMoveInfo,
+        function(error)
         {
           if(error) return callback(error)
 
-          ROOT_HOME = HOME
+          mountDevProcTmp_ExecInit(HOME, true, function(error)
+          {
+            if(error) return callback(error)
 
-          callback(null, HOME+'/home')
+            ROOT_HOME = HOME
+
+            callback(null, HOME+'/home')
+          })
         })
-      })
 
-    else
-      mountDevProcTmp_ExecInit(upperdir, false, callback)
-  });
+      else
+        mountDevProcTmp_ExecInit(upperdir, false, callback)
+    });
+  })
 }
 
 function filterUser(user)
