@@ -109,7 +109,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     {
       if(error && error.code !== 'EEXIST') return callback(error)
 
-      var argv = [null, path, '-o', 'lowerLayer=/dev']
+      var argv = ['/dev', path, '-o', 'ownerPerm=true']
       var options =
       {
         detached: true,
