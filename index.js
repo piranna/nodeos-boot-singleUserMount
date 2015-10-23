@@ -116,11 +116,20 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
         stdio: 'inherit'
       }
 
-      spawn(__dirname+'/node_modules/.bin/exclfs', argv, options)
+      spawn('exclfs', argv, options)
       .on('error', console.error.bind(console))
       .unref()
 
-      waitUntilDevMounted(path, 5, mountUserFilesystems)
+      waitUntilDevMounted(path, 5, function(error)
+      {
+        if(error) return callback(error)
+
+        // Remove ExclFS from initramfs to free memory
+        rimraf('/bin/exclfs')
+        rimraf('/lib/node_modules/exclfs')
+
+        mountUserFilesystems()
+      })
     })
 
   // Regular user
@@ -202,8 +211,7 @@ function overlay_users(usersFolder, callback)
   {
     // Remove the modules from initramfs to free memory
 //    rimraf('/lib/node_modules')
-    rimraf('/lib/node_modules/century')
-    rimraf('/lib/node_modules/nodeos-mount-filesystems')
+    rimraf('/lib/node_modules/nodeos-mount-utils')
 
     // Hide '/usr' folder (Is it an OverlayFS feature or a bug?)
     rimraf('/usr')
@@ -338,6 +346,8 @@ process.umask(0066)
 rimraf('/bin/century')
 rimraf('/bin/nodeos-mount-filesystems')
 rimraf('/init')
+rimraf('/lib/node_modules/century')
+rimraf('/lib/node_modules/nodeos-mount-filesystems')
 rimraf('/sbin')
 
 // Mount kernel filesystems
