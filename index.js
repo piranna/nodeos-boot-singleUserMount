@@ -43,14 +43,16 @@ function linuxCmdline(cmdline)
   {
     arg = arg.split('=')
 
+    var key = arg.shift()
     var val = true
-    if(arg.length > 1)
+
+    if(arg.length)
     {
-      val = arg.slice(1).join("=").split(',')
+      val = arg.join("=").split(',')
       if(val.length === 1) val = val[0]
     }
 
-    result[arg[0]] = val
+    result[key] = val
   })
 
   return result
@@ -266,7 +268,7 @@ function pathToUserfs(err, result)
 
 function askLocation(error)
 {
-  console.warn('Could not find userfs', error)
+  console.warn('Could not find userfs:', error)
 
   // only load prompt when it is needed
   var prompt = require('prompt')
@@ -277,7 +279,8 @@ function askLocation(error)
 
 function overlayfsroot(cmdline)
 {
-  var usersDev = cmdline.root
+  var usersDev = process.env.root
+  if(usersDev === undefined) usersDev = cmdline.root
   if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
