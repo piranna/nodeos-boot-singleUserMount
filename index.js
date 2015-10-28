@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-var fs    = require('fs')
-var spawn = require('child_process').spawn
+var fs      = require('fs')
+var resolve = require('path').resolve
+var spawn   = require('child_process').spawn
 
 var async  = require('async')
 var mkdirp = require('mkdirp')
@@ -287,10 +288,11 @@ function overlayfsroot(cmdline)
       if(error) return askLocation(error)
 
       // Mount users filesystem
-      var type   = cmdline.rootfstype || 'auto'
+      var type   = process.env.rootfstype || cmdline.rootfstype || 'auto'
       var extras = {errors: 'remount-ro'}
 
-      utils.mkdirMount(usersDev, HOME, type, flags, extras, function(error)
+      utils.mkdirMount(resolve(usersDev), HOME, type, flags, extras,
+        function(error)
       {
         if(error) return onerror(error)
 
