@@ -1,6 +1,6 @@
 {
   "name": "nodeos-mount-filesystems",
-  "version": "0.0.41",
+  "version": "0.0.42",
   "description": "Prepare and mount the NodeOS filesystems",
   "main": "index.js",
   "bin": "index.js",
@@ -27,7 +27,6 @@
     "prompt": "*"
   },
   "peerDependencies": {
-    "exclfs": "^0.0.2",
     "nodeos-mount-utils": "^0.0.26"
   }
 }

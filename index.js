@@ -19,6 +19,7 @@ const MS_NODEV  = flgs.MS_NODEV
 const MS_NOSUID = flgs.MS_NOSUID
 
 const flags = MS_NODEV | MS_NOSUID
+const EXCLFS_BIN = '/bin/exclfs'
 const HOME = '/tmp'
 
 
@@ -107,7 +108,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
   var path = upperdir+'/dev'
 
   // Root user
-  if(isRoot)
+  if(isRoot && fs.accessSync(EXCLFS_BIN, fs.X_OK))
     return mkdirp(path, '0000', function(error)
     {
       if(error && error.code !== 'EEXIST') return callback(error)
@@ -119,7 +120,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
         stdio: 'inherit'
       }
 
-      spawn('exclfs', argv, options)
+      spawn(EXCLFS_BIN, argv, options)
       .on('error', console.error.bind(console))
       .unref()
 
@@ -128,7 +129,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
         if(error) return callback(error)
 
         // Remove ExclFS from initramfs to free memory
-        rimraf('/bin/exclfs')
+        rimraf(EXCLFS_BIN)
         rimraf('/lib/node_modules/exclfs')
 
         mountUserFilesystems(arr, upperdir, callback)
@@ -197,7 +198,6 @@ function overlay_user(usersFolder, user, callback)
 
           callback(null, HOME+'/home')
         })
-
       })
     })
   })
