@@ -70,6 +70,22 @@ function mkdirMoveInfo(info, callback)
   utils.mkdirMove(info.source, info.target, callback)
 }
 
+function mountUserFilesystems(arr, upperdir, callback)
+{
+  each(arr, mkdirMountInfo, function(error)
+  {
+    if(error) return callback(error)
+
+    // Execute init
+    utils.execInit(upperdir, [], function(error)
+    {
+      if(error) console.warn(error)
+
+      callback()
+    })
+  })
+}
+
 function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 {
   var arr =
@@ -86,22 +102,6 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
       flags: flags
     }
   ]
-
-  function mountUserFilesystems()
-  {
-    each(arr, mkdirMountInfo, function(error)
-    {
-      if(error) return callback(error)
-
-      // Execute init
-      utils.execInit(upperdir, [], function(error)
-      {
-        if(error) console.warn(error)
-
-        callback()
-      })
-    })
-  }
 
   var path = upperdir+'/dev'
 
@@ -130,7 +130,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
         rimraf('/bin/exclfs')
         rimraf('/lib/node_modules/exclfs')
 
-        mountUserFilesystems()
+        mountUserFilesystems(arr, upperdir, callback)
       })
     })
 
@@ -141,7 +141,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     flags: MS_BIND
   })
 
-  mountUserFilesystems()
+  mountUserFilesystems(arr, upperdir, callback)
 }
 
 function overlay_user(usersFolder, user, callback)
