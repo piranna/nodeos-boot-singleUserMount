@@ -61,8 +61,9 @@ function linuxCmdline(cmdline)
 
 function mkdirMountInfo(info, callback)
 {
-  utils.mkdirMount(info.dev, info.path, info.type, info.flags, info.extras,
-      callback)
+  var dev = info.dev || info.type
+
+  utils.mkdirMount(dev, info.path, info.type, info.flags, info.extras, callback)
 }
 
 function mkdirMoveInfo(info, callback)
@@ -96,7 +97,6 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
       flags: MS_BIND
     },
     {
-      dev: 'tmpfs',
       path: upperdir+'/tmp',
       type: 'tmpfs',
       flags: flags
@@ -164,7 +164,7 @@ function overlay_user(usersFolder, user, callback)
 
     if(user === 'root') upperdir = '/root'
 
-    utils.mkdirMount('', upperdir, type, MS_NOSUID, extras, function(error)
+    utils.mkdirMount(type, upperdir, type, MS_NOSUID, extras, function(error)
     {
       if(error) return callback(error)
 
@@ -357,12 +357,10 @@ rimraf('/sbin')
 each(
 [
   {
-    dev: 'udev',
     path: '/dev',
     type: 'devtmpfs'
   },
   {
-    dev: 'proc',
     path: '/proc',
     type: 'proc',
     flags: flags,
