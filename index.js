@@ -169,37 +169,37 @@ function overlay_user(usersFolder, user, callback)
     {
       if(error) return callback(error)
 
-      if(user === 'root')
-        // Allow to root to access to users filesystem
-        eachSeries(
-        [
-          {
-            source: HOME,
-            target: upperdir+'/home'
-          },
-          {
-            source: upperdir,
-            target: HOME
-          }
-        ],
-        mkdirMoveInfo,
-        function(error)
+      if(user !== 'root')
+        return mountDevProcTmp_ExecInit(upperdir, false, callback)
+
+      // Allow to root to access to users filesystem
+      eachSeries(
+      [
+        {
+          source: HOME,
+          target: upperdir+'/home'
+        },
+        {
+          source: upperdir,
+          target: HOME
+        }
+      ],
+      mkdirMoveInfo,
+      function(error)
+      {
+        if(error) return callback(error)
+
+        mountDevProcTmp_ExecInit(HOME, true, function(error)
         {
           if(error) return callback(error)
 
-          mountDevProcTmp_ExecInit(HOME, true, function(error)
-          {
-            if(error) return callback(error)
+          ROOT_HOME = HOME
 
-            ROOT_HOME = HOME
-
-            callback(null, HOME+'/home')
-          })
+          callback(null, HOME+'/home')
         })
 
-      else
-        mountDevProcTmp_ExecInit(upperdir, false, callback)
-    });
+      })
+    })
   })
 }
 
