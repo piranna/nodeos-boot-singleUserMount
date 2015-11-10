@@ -108,7 +108,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
   var path = upperdir+'/dev'
 
   // Root user
-  if(isRoot && fs.accessSync(EXCLFS_BIN, fs.X_OK))
+  if(isRoot && fs.existsSync(EXCLFS_BIN))
     return mkdirp(path, '0000', function(error)
     {
       if(error && error.code !== 'EEXIST') return callback(error)
@@ -264,7 +264,7 @@ function pathToUserfs(err, result)
   if(error) console.warn(error)
 
   cmdline.root = result['path to userfs']
-  return overlayfsroot(cmdline)
+  return mountUsersFS(cmdline)
 }
 
 function askLocation(error)
@@ -278,11 +278,48 @@ function askLocation(error)
   prompt.get('path to userfs', pathToUserfs)
 }
 
-function overlayfsroot(cmdline)
+function prepareSessions()
+{
+  // Update environment variables
+  var env = process.env
+
+  delete env['root']
+  delete env['rootfstype']
+  delete env['vga']
+
+  env['NODE_PATH'] = '/lib/node_modules'
+
+  // Check if users filesystem has an administrator account
+  fs.readdir(HOME+'/root', function(error)
+  {
+    if(error)
+    {
+      if(error.code != 'ENOENT') return onerror(error)
+
+      // Users filesystem don't have a root user, just overlay users folders
+      overlay_users(HOME, onerror)
+    }
+    else
+      overlay_user(HOME, 'root', function(error, home)
+      {
+        if(error) return onerror(error)
+
+        overlay_users(home, onerror)
+      })
+  })
+}
+
+function mountUsersFS(cmdline)
 {
   var usersDev = process.env.root
   if(usersDev === undefined) usersDev = cmdline.root
-  if(usersDev)
+
+  // Running on a container (Docker, vagga), don't mount the users filesystem
+  if(usersDev === 'container')
+    prepareSessions()
+
+  // Running on real hardware or virtual machine, mount the users filesystem
+  else if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
       if(error) return askLocation(error)
@@ -296,37 +333,11 @@ function overlayfsroot(cmdline)
       {
         if(error) return onerror(error)
 
-        // Update environment variables
-        var env = process.env
-
-        delete env['root']
-        delete env['rootfstype']
-        delete env['vga']
-
-        env['NODE_PATH'] = '/lib/node_modules'
-
-        // Check if users filesystem has an administrator account
-        fs.readdir(HOME+'/root', function(error)
-        {
-          if(error)
-          {
-            if(error.code != 'ENOENT') return onerror(error)
-
-            // Users filesystem don't have a root user, just overlay users folders
-            overlay_users(HOME, onerror)
-          }
-          else
-          {
-            overlay_user(HOME, 'root', function(error, home)
-            {
-              if(error) return onerror(error)
-
-              overlay_users(home, onerror)
-            })
-          }
-        })
+        prepareSessions()
       })
     })
+
+  // Users filesystem is not defined, launch a Node.js REPL
   else
   {
     console.warn('*************************************************************')
@@ -377,5 +388,5 @@ function(error)
   cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
 
   // Mount root filesystem
-  overlayfsroot(cmdline)
+  mountUsersFS(cmdline)
 })
