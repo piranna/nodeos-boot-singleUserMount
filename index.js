@@ -6,6 +6,7 @@ var spawn   = require('child_process').spawn
 
 var async  = require('async')
 var mkdirp = require('mkdirp')
+var prompt = require('prompt')
 var rimraf = require('rimraf').sync
 
 var each       = async.each
@@ -259,7 +260,7 @@ function waitUntilDevMounted(path, tries, callback)
   })
 }
 
-function pathToUserfs(err, result)
+function pathToUserfs(error, result)
 {
   if(error) console.warn(error)
 
@@ -270,9 +271,6 @@ function pathToUserfs(err, result)
 function askLocation(error)
 {
   console.warn('Could not find userfs:', error)
-
-  // only load prompt when it is needed
-  var prompt = require('prompt')
 
   prompt.start()
   prompt.get('path to userfs', pathToUserfs)
