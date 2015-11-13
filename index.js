@@ -206,7 +206,7 @@ function overlay_user(usersFolder, user, callback)
 
 function filterUser(user)
 {
-  return user[0] !== '.' && user !== 'root'
+  return user[0] !== '.' && user !== 'root' && user !== 'lost+found'
 }
 
 function overlay_users(usersFolder, callback)
@@ -382,6 +382,11 @@ mkdirMountInfo,
 function(error)
 {
   if(error) console.warn(error);
+
+  // Symlinks for config data optained from `procfs`
+  fs.mkdirSync('/etc')
+  fs.symlinkSync('/proc/mounts', '/etc/mtab')
+  fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
 
   cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
 
