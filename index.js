@@ -376,12 +376,16 @@ mkdirMountInfo(info, function(error)
   if(error) console.warn(error);
 
   // Symlinks for config data optained from `procfs`
-  fs.mkdirSync('/etc')
-  fs.symlinkSync('/proc/mounts', '/etc/mtab')
-  fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
+  mkdirp('/etc', '0100', function(error)
+  {
+    if(error && error.code != 'EEXIST') return callback(error)
 
-  cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
+    fs.symlinkSync('/proc/mounts', '/etc/mtab')
+    fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
 
-  // Mount root filesystem
-  mountUsersFS(cmdline)
+    cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
+
+    // Mount root filesystem
+    mountUsersFS(cmdline)
+  })
 })
