@@ -174,7 +174,7 @@ function overlay_user(usersFolder, user, callback)
       if(user !== 'root')
         return mountDevProcTmp_ExecInit(upperdir, false, callback)
 
-      // Allow to root to access to users filesystem
+      // Allow root to access to the content of the users filesystem
       eachSeries(
       [
         {
@@ -276,7 +276,16 @@ function askLocation(error)
   prompt.get('path to userfs', pathToUserfs)
 }
 
-function prepareSessions()
+function adminOrUsers(single, home)
+{
+  // Enter administrator mode
+  if(single) return utils.startRepl('Administrator mode')
+
+  // Users filesystem don't have a root user, just overlay users folders
+  overlay_users(HOME, onerror)
+}
+
+function prepareSessions(single)
 {
   // Update environment variables
   var env = process.env
@@ -294,16 +303,15 @@ function prepareSessions()
     {
       if(error.code != 'ENOENT') return onerror(error)
 
-      // Users filesystem don't have a root user, just overlay users folders
-      overlay_users(HOME, onerror)
+      return adminOrUsers(single, HOME)
     }
-    else
-      overlay_user(HOME, 'root', function(error, home)
-      {
-        if(error) return onerror(error)
 
-        overlay_users(home, onerror)
-      })
+    overlay_user(HOME, 'root', function(error, home)
+    {
+      if(error) return onerror(error)
+
+      adminOrUsers(single, home)
+    })
   })
 }
 
@@ -314,7 +322,7 @@ function mountUsersFS(cmdline)
 
   // Running on a container (Docker, vagga), don't mount the users filesystem
   if(usersDev === 'container')
-    prepareSessions()
+    prepareSessions(cmdline.single)
 
   // Running on real hardware or virtual machine, mount the users filesystem
   else if(usersDev)
@@ -331,7 +339,7 @@ function mountUsersFS(cmdline)
       {
         if(error) return onerror(error)
 
-        prepareSessions()
+        prepareSessions(cmdline.single)
       })
     })
 
