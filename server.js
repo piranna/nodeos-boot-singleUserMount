@@ -282,7 +282,7 @@ function adminOrUsers(single, home)
   if(single) return utils.startRepl('Administrator mode')
 
   // Users filesystem don't have a root user, just overlay users folders
-  overlay_users(HOME, onerror)
+  overlay_users(home, onerror)
 }
 
 function prepareSessions(single)
