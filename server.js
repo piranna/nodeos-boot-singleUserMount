@@ -26,6 +26,7 @@ const HOME = '/tmp'
 
 var cmdline
 var ROOT_HOME = ''
+var single
 
 
 function onerror(error)
@@ -42,7 +43,7 @@ function linuxCmdline(cmdline)
 {
   var result = {}
 
-  cmdline.split(' ').forEach(function(arg)
+  cmdline.trim().split(' ').forEach(function(arg)
   {
     arg = arg.split('=')
 
@@ -51,7 +52,7 @@ function linuxCmdline(cmdline)
 
     if(arg.length)
     {
-      val = arg.join("=").split(',')
+      val = arg.join('=').split(',')
       if(val.length === 1) val = val[0]
     }
 
@@ -79,6 +80,8 @@ function mountUserFilesystems(arr, upperdir, callback)
   each(arr, mkdirMountInfo, function(error)
   {
     if(error) return callback(error)
+
+    if(single) return callback()
 
     // Execute init
     utils.execInit(upperdir, [], function(error)
@@ -276,7 +279,7 @@ function askLocation(error)
   prompt.get('path to userfs', pathToUserfs)
 }
 
-function adminOrUsers(single, home)
+function adminOrUsers(home)
 {
   // Enter administrator mode
   if(single) return utils.startRepl('Administrator mode')
@@ -285,7 +288,7 @@ function adminOrUsers(single, home)
   overlay_users(home, onerror)
 }
 
-function prepareSessions(single)
+function prepareSessions()
 {
   // Update environment variables
   var env = process.env
@@ -303,14 +306,14 @@ function prepareSessions(single)
     {
       if(error.code != 'ENOENT') return onerror(error)
 
-      return adminOrUsers(single, HOME)
+      return adminOrUsers(HOME)
     }
 
     overlay_user(HOME, 'root', function(error, home)
     {
       if(error) return onerror(error)
 
-      adminOrUsers(single, home)
+      adminOrUsers(home)
     })
   })
 }
@@ -322,7 +325,7 @@ function mountUsersFS(cmdline)
 
   // Running on a container (Docker, vagga), don't mount the users filesystem
   if(usersDev === 'container')
-    prepareSessions(cmdline.single)
+    prepareSessions()
 
   // Running on real hardware or virtual machine, mount the users filesystem
   else if(usersDev)
@@ -339,7 +342,7 @@ function mountUsersFS(cmdline)
       {
         if(error) return onerror(error)
 
-        prepareSessions(cmdline.single)
+        prepareSessions()
       })
     })
 
@@ -392,6 +395,8 @@ mkdirMountInfo(info, function(error)
     fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
 
     cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
+
+    single = cmdline.single
 
     // Mount root filesystem
     mountUsersFS(cmdline)
