@@ -377,11 +377,19 @@ rimraf('/sbin')
 mkdirp('/etc', '0100', function(error)
 {
   if(error && error.code != 'EEXIST') return callback(error)
-
-  fs.symlinkSync('/proc/mounts' , '/etc/mtab')
-  fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
-
   cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
+
+  try {
+    fs.symlinkSync('/proc/mounts', '/etc/mtab')
+  } catch (e) {
+    if (e && e.code !== 'EEXIST') return callback(e)
+  }
+
+  try {
+    fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
+  } catch (e) {
+    if (e && e.code !== 'EEXIST') return callback(e)
+  }
 
   single = cmdline.single
 
