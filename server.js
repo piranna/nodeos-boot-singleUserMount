@@ -220,7 +220,7 @@ function overlay_users(usersFolder, callback)
 //    rimraf('/lib/node_modules')
     rimraf('/lib/node_modules/nodeos-mount-utils')
 
-    // Hide '/usr' folder (Is it an OverlayFS feature or a bug?)
+    // Make '/usr' a opaque folder (OverlayFS feature)
     rimraf('/usr')
 
     callback(error)
@@ -373,32 +373,18 @@ rimraf('/init')
 rimraf('/lib/node_modules/nodeos-mount-filesystems')
 rimraf('/sbin')
 
-// Mount kernel `procfs` filesystem
-var info =
+// Symlinks for config data optained from `procfs`
+mkdirp('/etc', '0100', function(error)
 {
-  path: '/proc',
-  type: 'proc',
-  flags: flags,
-  extras: {hidepid: 2}
-}
+  if(error && error.code != 'EEXIST') return callback(error)
 
-mkdirMountInfo(info, function(error)
-{
-  if(error) console.warn(error);
+  fs.symlinkSync('/proc/mounts' , '/etc/mtab')
+  fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
 
-  // Symlinks for config data optained from `procfs`
-  mkdirp('/etc', '0100', function(error)
-  {
-    if(error && error.code != 'EEXIST') return callback(error)
+  cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
 
-    fs.symlinkSync('/proc/mounts', '/etc/mtab')
-    fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
+  single = cmdline.single
 
-    cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
-
-    single = cmdline.single
-
-    // Mount root filesystem
-    mountUsersFS(cmdline)
-  })
+  // Mount root filesystem
+  mountUsersFS(cmdline)
 })
