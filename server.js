@@ -28,7 +28,11 @@ var cmdline
 var ROOT_HOME = ''
 var single
 
-
+/**
+ * This error handler traces the error and starts a node.js repl
+ * @access private
+ * @param  {Error} error The error that gets traced
+ */
 function onerror(error)
 {
   if(error)
