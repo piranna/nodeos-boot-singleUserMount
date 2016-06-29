@@ -43,6 +43,21 @@ function onerror(error)
   }
 }
 
+/**
+ * This functions takes the cmdline **showed below in the example** and splits
+ * it into key value pairs
+ * @access  private
+ * @param   {String} cmdline This string contains information about the
+ *                           initrd and the root partition
+ * @return  {Object}         It returns a object containing key value pairs
+ *                           if no value is provided, then its just true
+ * @example
+ *   var cmdline = 'initrd=\\initramfs-linux.img root=PARTUUID=place_uuid_here\n'
+ *
+ * 	 var res = linuxCmdline(cmdline)
+ * 	 console.log(res) => { initrd: '\\initramfs-linux.img',
+ * 	 											 root: 'PARTUUID=uuid'}
+ */
 function linuxCmdline(cmdline)
 {
   var result = {}
