@@ -160,6 +160,16 @@ function mountUserFilesystems(arr, upperdir, callback)
   })
 }
 
+/**
+ * Waits until dev is mounted and then executes `mountUserFilesystems` to
+ * mount `$upperdir/proc` and `$upperdir/tmp`
+ * @access private
+ * @param  {String}   upperdir
+ * @param  {Boolean}  isRoot   True if the user is root, false if not
+ * @param  {Function} callback The callback function
+ * @return {Function}          The callback is either called with a error
+ *                             or if the user filesystems are mounted
+ */
 function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 {
   var arr =
