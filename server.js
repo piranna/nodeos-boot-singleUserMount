@@ -81,7 +81,24 @@ function linuxCmdline(cmdline)
   return result
 }
 
-
+/**
+ * This functions mounts the provided path by a environment variable.
+ * If no environment is available it uses the "info.type" as env variable.
+ * @access   private
+ * @param    {Object}   info        This object holds information about the
+ *                                  the folder to create, which flags it does
+ *                                  have on which path it should be created
+ * @param {String}       dev        Device-File being mounted (located in /dev) a.k.a. devFile.
+ * @param {String}       path       Directory to mount the device to.
+ * @param {String}       type       Filesystem identificator (one of /proc/filesystems).
+ * @param {Array|Number} [flags]    Flags for mounting
+ * @param {String}       [extras]   The data argument is interpreted by the
+ *                                  different file systems.
+ *                                  Typically it is a string of comma-separated
+ *                                  options understood by this file system.
+ * @param {Function}     callback   Function called after the mount operation finishes.
+ *                                  Receives only one argument err.
+ */
 function mkdirMountInfo(info, callback)
 {
   var dev = info.dev || info.type
