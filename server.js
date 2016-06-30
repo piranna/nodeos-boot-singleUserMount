@@ -415,7 +415,7 @@ function askLocation(error)
  * If the single key is set in the cmdline it starts a admin repl
  * If not it just overlays the users filesystem
  * @access private
- * @param  {String} home The path to folder of the users 
+ * @param  {String} home The path to folder of the users
  */
 function adminOrUsers(home)
 {
@@ -426,6 +426,15 @@ function adminOrUsers(home)
   overlay_users(home, onerror)
 }
 
+/**
+ * Prepares the session and checks if the users filesystem has a root account,
+ * if not check if cmdline has the single key
+ * It deletes the `root`, `rootfstype` and `vga` environment variables
+ * and adds `NODE_PATH` to it.
+ * @access private
+ * @return {Repl} Returns either a repl or a error if the error contains
+ *                a ENOENT code
+ */
 function prepareSessions()
 {
   // Update environment variables
