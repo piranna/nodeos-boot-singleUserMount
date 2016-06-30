@@ -109,6 +109,16 @@ function mkdirMountInfo(info, callback)
   utils.mkdirMount(dev, info.path, info.type, info.flags, info.extras, callback)
 }
 
+/**
+* Asynchronously create a target directory mount the source with MS_MOVE to it
+* and move all files to the newly created directory
+ * @access   private
+ * @param    {Object}   info
+ * @property {String}   info.source The source subtree to move
+ * @property {String}   info.target The path to move the subtree into
+ * @param    {Function} callback    The callback gets called if the move
+ *                                  operations is done
+ */
 function mkdirMoveInfo(info, callback)
 {
   utils.mkdirMove(info.source, info.target, callback)
