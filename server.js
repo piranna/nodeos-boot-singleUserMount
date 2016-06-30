@@ -305,6 +305,14 @@ function filterUser(user)
   return user[0] !== '.' && user !== 'root' && user !== 'lost+found'
 }
 
+/**
+ * Mount users directories and exec their init files
+ * @access private
+ * @param  {String}   usersFolder The path to all user directories
+ * @param  {Function} callback    The callback function
+ * @return {Function}             Returns the callback either with a error
+ *                                or with null if everything was fine
+ */
 function overlay_users(usersFolder, callback)
 {
   function done(error)
