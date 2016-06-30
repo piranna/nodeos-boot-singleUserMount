@@ -359,6 +359,15 @@ function waitUntilExists(path, tries, callback)
   })
 }
 
+/**
+ * This helper waits with a limit of tries until the device is mounted
+ * @access private
+ * @param  {String}   path     The path to read the files from
+ * @param  {Number}   tries    A limit of tries
+ * @param  {Function} callback The callback function
+ * @return {Function}          Returns the callback with either a error
+ *                             or nothing (if the amount of files is bigger 1)
+ */
 function waitUntilDevMounted(path, tries, callback)
 {
   fs.readdir(path, function(error, files)
