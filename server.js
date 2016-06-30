@@ -293,6 +293,13 @@ function overlay_user(usersFolder, user, callback)
   })
 }
 
+/**
+ * Filters users
+ * If the first char is not a dot (invisible folder?) and not root and not
+ * ´lost+found´ return true
+ * @access private
+ * @param  {String} user The name of the user
+ */
 function filterUser(user)
 {
   return user[0] !== '.' && user !== 'root' && user !== 'lost+found'
