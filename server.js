@@ -338,6 +338,15 @@ function overlay_users(usersFolder, callback)
   })
 }
 
+/**
+ * This helper waits with a limit of tries until the path exists
+ * @access private
+ * @param  {String}   path     The path to check for
+ * @param  {Number}   tries    A limit of tries
+ * @param  {Function} callback The callback function
+ * @return {Function}          Returns the callback with either nothing
+ *                             or with a error
+ */
 function waitUntilExists(path, tries, callback)
 {
   fs.exists(path, function(exists)
