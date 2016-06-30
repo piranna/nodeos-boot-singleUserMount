@@ -465,6 +465,19 @@ function prepareSessions()
   })
 }
 
+/**
+ * This function mounts the user fs
+ * if the root env variable contains `container` it prepares the session
+ * and if there is no root env var then it awaits the user device and
+ * then mounts the user device and then prepares the session
+ * @access private
+ * @param  {Object}       cmdline This objects holds key/value pairs from the
+ *                                `/proc/cmdline` file
+ * @return {Prompt|Error}         It returns either a prompt if the
+ *                                tries has reached its limit or a error
+ *                                if the mkdirMount fails to create the user
+ *                                device 
+ */
 function mountUsersFS(cmdline)
 {
   var usersDev = process.env.root
