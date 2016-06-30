@@ -398,6 +398,11 @@ function pathToUserfs(error, result)
   return mountUsersFS(cmdline)
 }
 
+/**
+ * Starts a prompt and asks for the location of the userfs
+ * @access private
+ * @param  {Error} error The error will be printed in the console
+ */
 function askLocation(error)
 {
   console.warn('Could not find userfs:', error)
