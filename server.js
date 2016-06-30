@@ -382,6 +382,14 @@ function waitUntilDevMounted(path, tries, callback)
   })
 }
 
+/**
+ * A callback function for the askLocation function
+ * @access private
+ * @param  {Error}    error  If the error is null it not gets printed
+ * @param  {Object}   result A object containing a key for the path to the userfs
+ * @return {Function}        Returns either a prompt or a error if the mount
+ *                           process fails
+ */
 function pathToUserfs(error, result)
 {
   if(error) console.warn(error)
