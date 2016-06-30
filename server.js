@@ -124,6 +124,24 @@ function mkdirMoveInfo(info, callback)
   utils.mkdirMove(info.source, info.target, callback)
 }
 
+/**
+ * Mounts the user filesystems
+ * @access private
+ * @param  {Array} arr       A array containing objects with
+ *                           the mounting information **For more Information
+ *                           see mkdirMountInfo**
+ * @param  {String} upperdir Path to the Init file
+ *                           The path must contain a init file
+ *                           Because execInit checks the gid & uid of the file
+ *                           and of the 'upperdir'
+ * @example
+ *   let infos = [ mountInfo1, mountInfo2 ] // see under mkdirMountInfo
+ *                                          // for more Info
+ *
+ * 	 // Its necessary to exclude the init file from the path because
+ * 	 // mountUserFilesystems does that for you
+ *   mountUserFilesystems(infos, 'path/to/initfile', callback)
+ */
 function mountUserFilesystems(arr, upperdir, callback)
 {
   each(arr, mkdirMountInfo, function(error)
