@@ -227,6 +227,15 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
   mountUserFilesystems(arr, upperdir, callback)
 }
 
+/**
+ * overlay_user first creates the workdir (with 0100 permission)
+ * which is a string out of the folder where all users are located, a
+ * constant `.workdirs` and the username e.g. `${usersFolder}/.workdirs/${user}`
+ * @access private
+ * @param  {String}   usersFolder The folder where all user folders are
+ * @param  {String}   user        The name of the user
+ * @param  {Function} callback    The callback function
+ */
 function overlay_user(usersFolder, user, callback)
 {
   var upperdir = usersFolder+'/'+user
