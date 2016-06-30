@@ -411,6 +411,12 @@ function askLocation(error)
   prompt.get('path to userfs', pathToUserfs)
 }
 
+/**
+ * If the single key is set in the cmdline it starts a admin repl
+ * If not it just overlays the users filesystem
+ * @access private
+ * @param  {String} home The path to folder of the users 
+ */
 function adminOrUsers(home)
 {
   // Enter administrator mode
