@@ -51,8 +51,8 @@ function onerror(error)
 }
 
 /**
- * This functions takes the cmdline **showed below in the example** and splits
- * it into key value pairs
+ * This functions takes the `cmdline` from `/proc/cmdline` **showed below in
+ * the example** and splits it into key/value pairs
  * @access private
  * @param  {String} cmdline This string contains information about the
  *                          initrd and the root partition
@@ -100,10 +100,10 @@ function linuxCmdline(cmdline)
  * @param    {Object}       info          This object holds information
  *                                        about the folder to create
  * @property {String}       info.dev      Device-File being mounted
- *                                        (located in /dev) a.k.a. devFile.
+ *                                        (located in `/dev`) a.k.a. devFile.
  * @property {String}       info.path     Directory to mount the device to.
  * @property {String}       info.type     Filesystem identificator
- *                                        (one of /proc/filesystems).
+ *                                        (one of `/proc/filesystems`).
  * @property {Array|Number} info.[flags]  Flags for mounting
  * @property {String}       info.[extras] The data argument is
  *                                        interpreted by the different
@@ -122,7 +122,7 @@ function mkdirMountInfo(info, callback)
 }
 
 /**
-* Asynchronously create a target directory mount the source with MS_MOVE to it
+* Asynchronously create a target directory mount the source with `MS_MOVE` to it
 * and move all files to the newly created directory
  * @access   private
  * @param    {Object}   info
@@ -145,7 +145,7 @@ function mkdirMoveInfo(info, callback)
  * @param  {String} upperdir Path to the Init file
  *                           The path must contain a init file
  *                           Because execInit checks the gid & uid of the file
- *                           and of the 'upperdir'
+ *                           and of the "upperdir"
  * @example
  *   let infos = [ mountInfo1, mountInfo2 ] // see under mkdirMountInfo
  *                                          // for more Info
@@ -174,7 +174,7 @@ function mountUserFilesystems(arr, upperdir, callback)
 
 /**
  * Waits until dev is mounted and then executes `mountUserFilesystems` to
- * mount `$upperdir/proc` and `$upperdir/tmp`
+ * mount `${upperdir}/proc` and `${upperdir}/tmp`
  * @access private
  * @param  {String}               upperdir The upperdir
  * @param  {Boolean}              isRoot   True if user is root, false if not
@@ -239,7 +239,7 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 }
 
 /**
- * overlay_user first creates the workdir (with 0100 permission)
+ * `overlay_user` first creates the workdir (with `0100` permission)
  * which is a string out of the folder where all users are located, a
  * constant `.workdirs` and the username e.g. `${usersFolder}/.workdirs/${user}`
  * @access private
@@ -306,7 +306,7 @@ function overlay_user(usersFolder, user, callback)
 
 /**
  * Filter folders that are valid user `$HOME`
- * If the first char is not a dot (invisible folder?) and not root and not
+ * If the first char is not a dot (invisible folder?) and not `root` and not
  * ´lost+found´ return true
  * @access private
  * @param  {String} user The name of the user
@@ -317,7 +317,7 @@ function filterUser(user)
 }
 
 /**
- * Mount users directories and exec their init files
+ * Mount users directories and exec their `init` files
  * @access private
  * @param  {String}   usersFolder The path to all user directories
  * @param  {Function} callback    The callback function
@@ -329,7 +329,7 @@ function overlay_users(usersFolder, callback)
   function done(error)
   {
     // Remove the modules from initramfs to free memory
-//    rimraf('/lib/node_modules')
+    // rimraf('/lib/node_modules')
     rimraf('/lib/node_modules/nodeos-mount-utils')
 
     // Make '/usr' a opaque folder (OverlayFS feature)
@@ -439,12 +439,12 @@ function adminOrUsers(home)
 
 /**
  * Prepares the session and checks if the users filesystem has a root account,
- * if not check if cmdline has the single key
+ * if not check if `/proc/cmdline` has the single key
  * It deletes the `root`, `rootfstype` and `vga` environment variables
  * and adds `NODE_PATH` to it.
  * @access private
  * @return {Repl} Returns either a repl or a error if the error contains
- *                a ENOENT code
+ *                a `ENOENT` code
  */
 function prepareSessions()
 {
@@ -477,7 +477,7 @@ function prepareSessions()
 }
 
 /**
- * This function mounts the user fs
+ * This function mounts the userfs
  * if the root env variable contains `container` it prepares the session
  * and if there is no root env var then it awaits the user device and
  * then mounts the user device and then prepares the session
@@ -486,7 +486,7 @@ function prepareSessions()
  *                                `/proc/cmdline` file
  * @return {Prompt|Error}         It returns either a prompt if the
  *                                tries has reached its limit or a error
- *                                if the mkdirMount fails to create the user
+ *                                if the `mkdirMount` fails to create the user
  *                                device
  */
 function mountUsersFS(cmdline)
