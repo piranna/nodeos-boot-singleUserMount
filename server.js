@@ -300,7 +300,7 @@ function overlay_user(usersFolder, user, callback)
 }
 
 /**
- * Filters users
+ * Filter folders that are valid user `$HOME`
  * If the first char is not a dot (invisible folder?) and not root and not
  * ´lost+found´ return true
  * @access private
