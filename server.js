@@ -29,7 +29,7 @@ var ROOT_HOME = ''
 var single
 
 /**
- * This callback is part of the mountDevProcTmp_ExecInit function
+ * This callback is part of the `mountDevProcTmp_ExecInit` function
  * @callback mountDevProcCallback
  * @param    {Error} error The callback is called with a error if the devices
  *                         couldnt be mounted
@@ -53,17 +53,22 @@ function onerror(error)
 /**
  * This functions takes the cmdline **showed below in the example** and splits
  * it into key value pairs
- * @access  private
- * @param   {String} cmdline This string contains information about the
- *                           initrd and the root partition
- * @return  {Object}         It returns a object containing key value pairs
- *                           if no value is provided, then its just true
+ * @access private
+ * @param  {String} cmdline This string contains information about the
+ *                          initrd and the root partition
+ * @return {Object}         It returns a object containing key/value pairs
+ *                          if there is no value for the key then its just true.
+ *                          **For more Information, look at the example**
  * @example
- *   var cmdline = 'initrd=\\initramfs-linux.img root=PARTUUID=place_uuid_here\n'
+ *   var cmdline1 = 'initrd=\\initramfs-linux.img root=PARTUUID=someuuidhere\n'
+ *   var cmdline2 = 'somevar root=PARTUUID=someuuidhere\n'
  *
- * 	 var res = linuxCmdline(cmdline)
- * 	 console.log(res) => { initrd: '\\initramfs-linux.img',
- * 	 											 root: 'PARTUUID=uuid'}
+ * 	 var res1 = linuxCmdline(cmdline1)
+ * 	 var res2 = linuxCmdline(cmdline2)
+ * 	 console.log(res1)
+ * 	 //-> { initrd: '\\initramfs-linux.img',root: 'PARTUUID=someuuidhere' }
+ * 	 console.log(res2)
+ * 	 //-> { somevar: true, root: 'PARTUUID=someuuidhere' }
  */
 function linuxCmdline(cmdline)
 {
