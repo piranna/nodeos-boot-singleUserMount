@@ -306,10 +306,10 @@ function overlay_user(usersFolder, user, callback)
 
 /**
  * Filter folders that are valid user `$HOME`
- * If the first char is not a dot (invisible folder?) and not `root` and not
- * ´lost+found´ return true
  * @access private
- * @param  {String} user The name of the user
+ * @param  {String}  user The name of the user
+ * @return {Boolean}      Returns true If the first char is not a dot
+ *                        and not `root` and not ´lost+found´
  */
 function filterUser(user)
 {
@@ -423,7 +423,7 @@ function askLocation(error)
 }
 
 /**
- * If the single key is set in the cmdline it starts a admin repl
+ * If the `single` key is set in the cmdline it starts a admin repl
  * If not it just overlays the users filesystem
  * @access private
  * @param  {String} home The path to folder of the users
