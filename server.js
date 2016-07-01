@@ -29,6 +29,13 @@ var ROOT_HOME = ''
 var single
 
 /**
+ * This callback is part of the mountDevProcTmp_ExecInit function
+ * @callback mountDevProcCallback
+ * @param    {Error} error The callback is called with a error if the devices
+ *                         couldnt be mounted
+ */
+
+/**
  * This error handler traces the error and starts a node.js repl
  * @access private
  * @param  {Error} error The error that gets traced
@@ -164,11 +171,10 @@ function mountUserFilesystems(arr, upperdir, callback)
  * Waits until dev is mounted and then executes `mountUserFilesystems` to
  * mount `$upperdir/proc` and `$upperdir/tmp`
  * @access private
- * @param  {String}   upperdir
- * @param  {Boolean}  isRoot   True if the user is root, false if not
- * @param  {Function} callback The callback function
- * @return {Function}          The callback is either called with a error
- *                             or if the user filesystems are mounted
+ * @param  {String}               upperdir The upperdir
+ * @param  {Boolean}              isRoot   True if user is root, false if not
+ * @param  {Function}             callback The callback function
+ * @return {mountDevProcCallback}          Returns the callback function
  */
 function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 {
@@ -476,7 +482,7 @@ function prepareSessions()
  * @return {Prompt|Error}         It returns either a prompt if the
  *                                tries has reached its limit or a error
  *                                if the mkdirMount fails to create the user
- *                                device 
+ *                                device
  */
 function mountUsersFS(cmdline)
 {
