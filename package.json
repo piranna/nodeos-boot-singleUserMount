@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/NodeOS/nodeos-mount-filesystems",
   "dependencies": {
-    "async": "^1.5.2",
+    "async": "^2.0.1",
     "mkdirp": "^0.5.1",
     "rimraf": "^2.5.2",
     "prompt": "*"
