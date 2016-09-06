@@ -1,20 +1,16 @@
 #!/usr/bin/env node
 
-var fs      = require('fs')
-var resolve = require('path').resolve
-var spawn   = require('child_process').spawn
+const fs      = require('fs')
+const resolve = require('path').resolve
+const spawn   = require('child_process').spawn
 
-var async  = require('async')
-var mkdirp = require('mkdirp')
-var prompt = require('prompt')
-var rimraf = require('rimraf').sync
+const async  = require('async')
+const mkdirp = require('mkdirp')
+const prompt = require('prompt')
+const rimraf = require('rimraf').sync
+const utils  = require('nodeos-mount-utils')
 
-var each       = async.each
-var eachSeries = async.eachSeries
-
-var utils = require('nodeos-mount-utils')
-var flgs  = utils.flags
-
+const flgs      = utils.flags
 const MS_BIND   = flgs.MS_BIND
 const MS_NODEV  = flgs.MS_NODEV
 const MS_NOSUID = flgs.MS_NOSUID
@@ -153,7 +149,7 @@ function mkdirMoveInfo(info, callback)
  */
 function mountUserFilesystems(arr, upperdir, callback)
 {
-  each(arr, mkdirMountInfo, function(error)
+  async.each(arr, mkdirMountInfo, function(error)
   {
     if(error) return callback(error)
 
@@ -272,7 +268,7 @@ function overlay_user(usersFolder, user, callback)
         return mountDevProcTmp_ExecInit(upperdir, false, callback)
 
       // Allow root to access to the content of the users filesystem
-      eachSeries(
+      async.eachSeries(
       [
         {
           source: HOME,
@@ -340,7 +336,7 @@ function overlay_users(usersFolder, callback)
   {
     if(error) return done(error)
 
-    each(users.filter(filterUser),
+    async.each(users.filter(filterUser),
          overlay_user.bind(undefined, usersFolder),
          done)
   })
@@ -545,7 +541,7 @@ mkdirp('/etc', '0100', function(error)
     '/proc/net/pnp': '/etc/resolv.conf'
   }
 
-  each(symlinks, function(dest, src, callback)
+  async.eachOf(symlinks, function(dest, src, callback)
   {
     fs.symlink(src, dest, function(error)
     {
