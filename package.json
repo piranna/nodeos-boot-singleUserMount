@@ -1,6 +1,6 @@
 {
   "name": "nodeos-mount-filesystems",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "Prepare and mount the NodeOS filesystems",
   "bin": "server.js",
   "scripts": {
