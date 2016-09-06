@@ -115,9 +115,7 @@ function linuxCmdline(cmdline)
  */
 function mkdirMountInfo(info, callback)
 {
-  var dev = info.dev || info.type
-
-  utils.mkdirMount(dev, info.path, info.type, info.flags, info.extras, callback)
+  utils.mkdirMount(info.path, info.type, info.flags, info.extras, callback)
 }
 
 /**
@@ -162,7 +160,7 @@ function mountUserFilesystems(arr, upperdir, callback)
     if(single) return callback()
 
     // Execute init
-    utils.execInit(upperdir, [], function(error)
+    utils.execInit(upperdir, function(error)
     {
       if(error) console.warn(error)
 
@@ -185,9 +183,9 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
   var arr =
   [
     {
-      dev: '/proc',
       path: upperdir+'/proc',
-      flags: MS_BIND
+      flags: MS_BIND,
+      extras: {devFile: '/proc'}
     },
     {
       path: upperdir+'/tmp',
@@ -229,9 +227,9 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
 
   // Regular user
   arr.unshift({
-    dev: ROOT_HOME+'/dev',
     path: path,
-    flags: MS_BIND
+    flags: MS_BIND,
+    extras: {devFile: ROOT_HOME+'/dev'}
   })
 
   mountUserFilesystems(arr, upperdir, callback)
@@ -266,7 +264,7 @@ function overlay_user(usersFolder, user, callback)
 
     if(user === 'root') upperdir = '/root'
 
-    utils.mkdirMount(type, upperdir, type, MS_NOSUID, extras, function(error)
+    utils.mkdirMount(upperdir, type, MS_NOSUID, extras, function(error)
     {
       if(error) return callback(error)
 
@@ -506,10 +504,9 @@ function mountUsersFS(cmdline)
 
       // Mount users filesystem
       var type   = process.env.rootfstype || cmdline.rootfstype || 'auto'
-      var extras = {errors: 'remount-ro'}
+      var extras = {errors: 'remount-ro', devFile: resolve(usersDev)}
 
-      utils.mkdirMount(resolve(usersDev), HOME, type, flags, extras,
-        function(error)
+      utils.mkdirMount(HOME, type, flags, extras, function(error)
       {
         if(error) return onerror(error)
 
