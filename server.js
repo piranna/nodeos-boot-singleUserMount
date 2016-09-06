@@ -516,19 +516,12 @@ function mountUsersFS(cmdline)
 
   // Users filesystem is not defined, launch a Node.js REPL
   else
-  {
-    console.warn('*************************************************************')
-    console.warn('* Users filesytem is not defined, will use a tmpfs instead. *')
-    console.warn('*                                                           *')
-    console.warn('* ALL YOUR CHANGES WILL BE LOST IF NOT SAVED IN OTHER PLACE *')
-    console.warn('*                                                           *')
-    console.warn('* You can find info about how to use an users filesystem at *')
-    console.warn('*                                                           *')
-    console.warn('*             https://github.com/NodeOS/NodeOS              *')
-    console.warn('*************************************************************')
+    fs.readFile('resources/readonly_warning.txt', 'utf8', function(error, data)
+    {
+      if(!error) console.warn(data)
 
-    utils.startRepl('NodeOS-mount-filesystems')
-  }
+      utils.startRepl('NodeOS-mount-filesystems')
+    })
 }
 
 

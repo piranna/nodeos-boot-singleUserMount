@@ -1,0 +1,9 @@
+***************************************************************************
+* Users filesytem is not defined, I will use a temporal filesytem instead *
+*                                                                         *
+*     ALL YOUR CHANGES WILL BE LOST IF YOU DON'T SAVE IN OTHER PLACE      *
+*                                                                         *
+*   You can find info about how to create a NodeOS users filesystem at    *
+*                                                                         *
+*                    https://github.com/NodeOS/NodeOS                     *
+***************************************************************************
