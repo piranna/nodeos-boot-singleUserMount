@@ -24,7 +24,6 @@ const EXCLFS_BIN = '/bin/exclfs'
 const HOME = '/tmp'
 
 
-var cmdline
 var ROOT_HOME = ''
 var single
 
@@ -405,8 +404,8 @@ function pathToUserfs(error, result)
 {
   if(error) console.warn(error)
 
-  cmdline.root = result['path to userfs']
-  return mountUsersFS(cmdline)
+  this.root = result['path to userfs']
+  return mountUsersFS(this)
 }
 
 /**
@@ -419,7 +418,7 @@ function askLocation(error)
   console.warn('Could not find userfs:', error)
 
   prompt.start()
-  prompt.get('path to userfs', pathToUserfs)
+  prompt.get('path to userfs', pathToUserfs.bind(this))
 }
 
 /**
@@ -491,6 +490,7 @@ function prepareSessions()
  */
 function mountUsersFS(cmdline)
 {
+  // Allow to override or disable `usersDev`
   var usersDev = process.env.root
   if(usersDev === undefined) usersDev = cmdline.root
 
@@ -502,7 +502,7 @@ function mountUsersFS(cmdline)
   else if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
-      if(error) return askLocation(error)
+      if(error) return askLocation.call(cmdline, error)
 
       // Mount users filesystem
       var type   = process.env.rootfstype || cmdline.rootfstype || 'auto'
@@ -547,23 +547,37 @@ rimraf('/sbin')
 // Symlinks for config data optained from `procfs`
 mkdirp('/etc', '0100', function(error)
 {
-  if(error && error.code != 'EEXIST') return callback(error)
-  cmdline = linuxCmdline(fs.readFileSync('/proc/cmdline', 'utf8'))
+  if(error && error.code != 'EEXIST') throw error
 
-  try {
-    fs.symlinkSync('/proc/mounts', '/etc/mtab')
-  } catch (e) {
-    if (e && e.code !== 'EEXIST') return callback(e)
+  const symlinks =
+  {
+    '/proc/mounts': '/etc/mtab',
+    '/proc/net/pnp': '/etc/resolv.conf'
   }
 
-  try {
-    fs.symlinkSync('/proc/net/pnp', '/etc/resolv.conf')
-  } catch (e) {
-    if (e && e.code !== 'EEXIST') return callback(e)
-  }
+  each(symlinks, function(dest, src, callback)
+  {
+    fs.symlink(src, dest, function(error)
+    {
+      if(error && error.code !== 'EEXIST') return callback(error)
 
-  single = cmdline.single
+      callback()
+    })
+  },
+  function(error)
+  {
+    if(error) throw error
 
-  // Mount root filesystem
-  mountUsersFS(cmdline)
+    fs.readFile('/proc/cmdline', 'utf8', function(error, data)
+    {
+      if(error) throw error
+
+      var cmdline = linuxCmdline(data)
+
+      single = cmdline.single
+
+      // Mount root filesystem
+      mountUsersFS(cmdline)
+    })
+  })
 })
