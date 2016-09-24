@@ -5,6 +5,7 @@ const resolve = require('path').resolve
 const spawn   = require('child_process').spawn
 
 const async  = require('async')
+const jocker = require('jocker')
 const mkdirp = require('mkdirp')
 const prompt = require('prompt')
 const rimraf = require('rimraf').sync
@@ -20,15 +21,8 @@ const EXCLFS_BIN = '/bin/exclfs'
 const HOME = '/tmp'
 
 
-var ROOT_HOME = ''
 var single
 
-/**
- * This callback is part of the `mountDevProcTmp_ExecInit` function
- * @callback mountDevProcCallback
- * @param    {Error} error The callback is called with a error if the devices
- *                         couldnt be mounted
- */
 
 /**
  * This error handler traces the error and starts a node.js repl
@@ -37,12 +31,8 @@ var single
  */
 function onerror(error)
 {
-  if(error)
-  {
-    // Error mounting the root filesystem or executing init, enable REPL
-    console.trace(error)
-    utils.startRepl('NodeOS-mount-filesystems')
-  }
+  console.trace(error)
+  utils.startRepl('NodeOS-mount-filesystems')
 }
 
 /**
@@ -130,33 +120,33 @@ function mkdirMoveInfo(info, callback)
 }
 
 /**
- * Mounts the user filesystems
+ * Mounts the root filesystems and exec its `/init`
+ *
  * @access private
- * @param  {Array} arr       A array containing objects with
- *                           the mounting information **For more Information
- *                           see mkdirMountInfo**
- * @param  {String} upperdir Path to the Init file
- *                           The path must contain a init file
- *                           Because execInit checks the gid & uid of the file
- *                           and of the "upperdir"
+ *
+ * @param {Array} arr An array containing objects with the mounting information
+ *                    **For more Information see mkdirMountInfo**
+ * @param {String} home Path to the `root` home. It must contain an `/init` file
+ *
  * @example
  *   let infos = [ mountInfo1, mountInfo2 ] // see under mkdirMountInfo
  *                                          // for more Info
  *
  * 	 // Its necessary to exclude the init file from the path because
- * 	 // mountUserFilesystems does that for you
- *   mountUserFilesystems(infos, 'path/to/initfile', callback)
+ * 	 // `mountRootFilesystems()` does that for you
+ *   mountRootFilesystems(infos, 'path/to/initfile', callback)
  */
-function mountUserFilesystems(arr, upperdir, callback)
+function mountRootFilesystems(arr, home, callback)
 {
   async.each(arr, mkdirMountInfo, function(error)
   {
     if(error) return callback(error)
 
+    // System started in `single` mode, launch REPL
     if(single) return callback()
 
-    // Execute init
-    utils.execInit(upperdir, function(error)
+    // Execute `root` user init in un-priviledged environment
+    jocker.exec(home, '/init', {PATH: '/bin'}, function(error)
     {
       if(error) console.warn(error)
 
@@ -166,15 +156,15 @@ function mountUserFilesystems(arr, upperdir, callback)
 }
 
 /**
- * Waits until dev is mounted and then executes `mountUserFilesystems` to
- * mount `${upperdir}/proc` and `${upperdir}/tmp`
+ * Waits until `/dev` is mounted and then executes `mountRootFilesystems()` to
+ * mount `root`'s `${upperdir}/proc` and `${upperdir}/tmp`
+ *
  * @access private
- * @param  {String}               upperdir The upperdir
- * @param  {Boolean}              isRoot   True if user is root, false if not
- * @param  {Function}             callback The callback function
- * @return {mountDevProcCallback}          Returns the callback function
+ *
+ * @param {String} upperdir The upperdir
+ * @param {mountDevProcCallback} callback The callback function
  */
-function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
+function prepareRootFilesystems(upperdir, callback)
 {
   var arr =
   [
@@ -190,11 +180,23 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
     }
   ]
 
-  var path = upperdir+'/dev'
+  // Using ExclFS filesystem
+  fs.access(EXCLFS_BIN, fs.constants.X_OK, function(error)
+  {
+    var path = upperdir+'/dev'
 
-  // Root user
-  if(isRoot && fs.existsSync(EXCLFS_BIN))
-    return mkdirp(path, '0000', function(error)
+    if(error)
+    {
+      arr.unshift({
+        path: path,
+        flags: MS_BIND,
+        extras: {devFile: '/dev'}
+      })
+
+      return mountRootFilesystems(arr, upperdir, callback)
+    }
+
+    mkdirp(path, '0000', function(error)
     {
       if(error && error.code !== 'EEXIST') return callback(error)
 
@@ -217,33 +219,32 @@ function mountDevProcTmp_ExecInit(upperdir, isRoot, callback)
         rimraf(EXCLFS_BIN)
         rimraf('/lib/node_modules/exclfs')
 
-        mountUserFilesystems(arr, upperdir, callback)
+        mountRootFilesystems(arr, upperdir, callback)
       })
     })
-
-  // Regular user
-  arr.unshift({
-    path: path,
-    flags: MS_BIND,
-    extras: {devFile: ROOT_HOME+'/dev'}
   })
-
-  mountUserFilesystems(arr, upperdir, callback)
 }
+/**
+ * @callback mountDevProcCallback
+ *
+ * @param {Error} error The callback is called with an error if the devices
+ *                      couldn't be mounted
+ */
 
 /**
- * `overlay_user` first creates the workdir (with `0100` permission)
- * which is a string out of the folder where all users are located, a
- * constant `.workdirs` and the username e.g. `${usersFolder}/.workdirs/${user}`
+ * Creates the workdir (with `0100` permission) which is a string out of the
+ * folder where all users are located, a constant `.workdirs` and the username
+ * e.g. `${usersFolder}/.workdirs/${user}`
+ *
  * @access private
+ *
  * @param  {String}   usersFolder The folder where all user folders are
- * @param  {String}   user        The name of the user
  * @param  {Function} callback    The callback function
  */
-function overlay_user(usersFolder, user, callback)
+function overlay_root(usersFolder, callback)
 {
-  var upperdir = usersFolder+'/'+user
-  var workdir  = usersFolder+'/.workdirs/'+user
+  var upperdir = usersFolder+'/root'
+  var workdir  = usersFolder+'/.workdirs/root'
 
   mkdirp(workdir, '0100', function(error)
   {
@@ -256,16 +257,13 @@ function overlay_user(usersFolder, user, callback)
       lowerdir: '/',
       upperdir: upperdir,
       workdir : workdir
-    };
+    }
 
-    if(user === 'root') upperdir = '/root'
+    upperdir = '/root'
 
     utils.mkdirMount(upperdir, type, MS_NOSUID, extras, function(error)
     {
       if(error) return callback(error)
-
-      if(user !== 'root')
-        return mountDevProcTmp_ExecInit(upperdir, false, callback)
 
       // Allow root to access to the content of the users filesystem
       async.eachSeries(
@@ -284,11 +282,9 @@ function overlay_user(usersFolder, user, callback)
       {
         if(error) return callback(error)
 
-        mountDevProcTmp_ExecInit(HOME, true, function(error)
+        prepareRootFilesystems(HOME, function(error)
         {
           if(error) return callback(error)
-
-          ROOT_HOME = HOME
 
           callback(null, HOME+'/home')
         })
@@ -307,39 +303,6 @@ function overlay_user(usersFolder, user, callback)
 function filterUser(user)
 {
   return user[0] !== '.' && user !== 'root' && user !== 'lost+found'
-}
-
-/**
- * Mount users directories and exec their `init` files
- * @access private
- * @param  {String}   usersFolder The path to all user directories
- * @param  {Function} callback    The callback function
- * @return {Function}             Returns the callback either with a error
- *                                or with null if everything was fine
- */
-function overlay_users(usersFolder, callback)
-{
-  function done(error)
-  {
-    // Remove the modules from initramfs to free memory
-    // rimraf('/lib/node_modules')
-    rimraf('/lib/node_modules/nodeos-mount-utils')
-
-    // Make '/usr' a opaque folder (OverlayFS feature)
-    rimraf('/usr')
-
-    callback(error)
-  }
-
-  // Mount users directories and exec their init files
-  fs.readdir(usersFolder, function(error, users)
-  {
-    if(error) return done(error)
-
-    async.each(users.filter(filterUser),
-         overlay_user.bind(undefined, usersFolder),
-         done)
-  })
 }
 
 /**
@@ -419,15 +382,38 @@ function askLocation(error)
  * If the `single` key is set in the cmdline it starts a admin repl
  * If not it just overlays the users filesystem
  * @access private
- * @param  {String} home The path to folder of the users
+ * @param  {String} usersFolder The path to folder of the users
  */
-function adminOrUsers(home)
+function adminOrUsers(usersFolder)
 {
   // Enter administrator mode
   if(single) return utils.startRepl('Administrator mode')
 
   // Users filesystem don't have a root user, just overlay users folders
-  overlay_users(home, onerror)
+
+  function done(error)
+  {
+    // Remove the modules from initramfs to free memory
+    // rimraf('/lib/node_modules')
+    rimraf('/lib/node_modules/jocker')
+
+    // Make '/usr' a opaque folder (OverlayFS feature)
+    rimraf('/usr')
+
+    if(error) onerror(error)
+  }
+
+  // Mount users directories and exec their init files
+  fs.readdir(usersFolder, function(error, users)
+  {
+    if(error) return done(error)
+
+    async.each(users.filter(filterUser), function(username, callback)
+    {
+      jocker.run(usersFolder+'/'+username, '/init', {PATH: '/bin'}, callback)
+    },
+    done)
+  })
 }
 
 /**
@@ -455,16 +441,17 @@ function prepareSessions()
   {
     if(error)
     {
-      if(error.code != 'ENOENT') return onerror(error)
+      if(error.code !== 'ENOENT') return onerror(error)
 
       return adminOrUsers(HOME)
     }
 
-    overlay_user(HOME, 'root', function(error, home)
+    // There's an administrator account, prepare it first
+    overlay_root(HOME, function(error, newHome)
     {
       if(error) return onerror(error)
 
-      adminOrUsers(home)
+      adminOrUsers(newHome)
     })
   })
 }
@@ -489,11 +476,10 @@ function mountUsersFS(cmdline)
   if(usersDev === undefined) usersDev = cmdline.root
 
   // Running on a container (Docker, vagga), don't mount the users filesystem
-  if(usersDev === 'container')
-    prepareSessions()
+  if(usersDev === 'container') return prepareSessions()
 
   // Running on real hardware or virtual machine, mount the users filesystem
-  else if(usersDev)
+  if(usersDev)
     waitUntilExists(usersDev, 5, function(error)
     {
       if(error) return askLocation.call(cmdline, error)
@@ -514,8 +500,9 @@ function mountUsersFS(cmdline)
   else
     fs.readFile('resources/readonly_warning.txt', 'utf8', function(error, data)
     {
-      if(!error) console.warn(data)
+      if(error) return onerror(error)
 
+      console.warn(data)
       utils.startRepl('NodeOS-mount-filesystems')
     })
 }

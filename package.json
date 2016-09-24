@@ -22,10 +22,11 @@
   "dependencies": {
     "async": "^2.0.1",
     "mkdirp": "^0.5.1",
+    "nodeos-mount-utils": "^0.2.0",
     "rimraf": "^2.5.4",
     "prompt": "*"
   },
   "peerDependencies": {
-    "nodeos-mount-utils": "^0.2.0"
+    "jocker": "^0.0.0"
   }
 }
