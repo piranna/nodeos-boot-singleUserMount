@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-const fs = require('fs')
+const readFile = require('fs').readFile
 
-const eachOf = require('async/eachOf')
-const mkdirp = require('mkdirp')
-const rimraf = require('rimraf').sync
+const startRepl = require('nodeos-mount-utils').startRepl
 
-const mountUsersFS = require('.')
+const boot = require('.')
+
+
+const MOUNTPOINT = '/tmp'
 
 
 /**
@@ -52,52 +53,40 @@ function linuxCmdline(cmdline)
   return result
 }
 
-
-// Change umask system wide so new files are accesible ONLY by its owner
-process.umask(0066)
-
-// Remove from initramfs the files only needed on boot to free memory
-rimraf('/bin/nodeos-mount-filesystems')
-rimraf('/init')
-rimraf('/lib/node_modules/nodeos-mount-filesystems')
-rimraf('/sbin')
-
-// Symlinks for config data optained from `procfs`
-mkdirp('/etc', '0100', function(error)
+/**
+ * This error handler traces the error and starts a Node.js REPL
+ *
+ * @param  {Error} error The error that gets traced
+ */
+function onerror(error)
 {
-  if(error && error.code !== 'EEXIST') throw error
+  console.trace(error)
+  startRepl('NodeOS-mount-filesystems')
+}
 
-  const symlinks =
-  {
-    '/proc/mounts': '/etc/mtab',
-    '/proc/net/pnp': '/etc/resolv.conf'
-  }
 
-  eachOf(symlinks, function(dest, src, callback)
+boot.basicEnvironment(function(error)
+{
+  if(error) return onerror(error)
+
+  // Get Linux kernel command line arguments
+  readFile('/proc/cmdline', 'utf8', function(error, data)
   {
-    fs.symlink(src, dest, function(error)
+    if(error) return onerror(error)
+
+    var cmdline = linuxCmdline(data)
+
+    // Mount users filesystem
+    boot.mountUsersFS(MOUNTPOINT, cmdline, function(error)
     {
-      if(error && error.code !== 'EEXIST') return callback(error)
+      if(error) return onerror(error)
 
-      callback()
-    })
-  },
-  function(error)
-  {
-    if(error) throw error
+      boot.prepareSessions(MOUNTPOINT, cmdline.single, function(error)
+      {
+        if(error) return onerror(error)
 
-    // Update environment variables
-    var env = process.env
-    delete env['vga']
-    env['NODE_PATH'] = '/lib/node_modules'
-
-    // Get Linux kernel command line arguments
-    fs.readFile('/proc/cmdline', 'utf8', function(error, data)
-    {
-      if(error) throw error
-
-      // Mount users filesystem
-      mountUsersFS(linuxCmdline(data))
+        // KTHXBYE >^.^<
+      })
     })
   })
 })
