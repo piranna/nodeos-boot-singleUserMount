@@ -2,6 +2,7 @@
   "name": "nodeos-mount-filesystems",
   "version": "0.2.1",
   "description": "Prepare and mount the NodeOS filesystems",
+  "main": "lib",
   "bin": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
