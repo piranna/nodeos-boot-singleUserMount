@@ -6,7 +6,7 @@ const eachOf = require('async/eachOf')
 const mkdirp = require('mkdirp')
 const rimraf = require('rimraf').sync
 
-const nmf = require('.')
+const mountUsersFS = require('.')
 
 
 /**
@@ -65,7 +65,7 @@ rimraf('/sbin')
 // Symlinks for config data optained from `procfs`
 mkdirp('/etc', '0100', function(error)
 {
-  if(error && error.code != 'EEXIST') throw error
+  if(error && error.code !== 'EEXIST') throw error
 
   const symlinks =
   {
@@ -86,16 +86,18 @@ mkdirp('/etc', '0100', function(error)
   {
     if(error) throw error
 
+    // Update environment variables
+    var env = process.env
+    delete env['vga']
+    env['NODE_PATH'] = '/lib/node_modules'
+
+    // Get Linux kernel command line arguments
     fs.readFile('/proc/cmdline', 'utf8', function(error, data)
     {
       if(error) throw error
 
-      var cmdline = linuxCmdline(data)
-
-      nmf.single = cmdline.single
-
       // Mount users filesystem
-      nmf.mountUsersFS(cmdline)
+      mountUsersFS(linuxCmdline(data))
     })
   })
 })
