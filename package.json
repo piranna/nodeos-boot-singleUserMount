@@ -1,15 +1,14 @@
 {
-  "name": "nodeos-mount-filesystems",
-  "version": "0.3.1",
-  "description": "Prepare and mount the NodeOS filesystems",
-  "main": "lib",
+  "name": "nodeos-boot-singleUserMount",
+  "version": "0.4.0",
+  "description": "Prepare and mount a NodeOS single user filesystem",
   "bin": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/NodeOS/nodeos-mount-filesystems.git"
+    "url": "https://github.com/NodeOS/nodeos-mount-singleUser.git"
   },
   "keywords": [
     "NodeOS"
@@ -17,15 +16,17 @@
   "author": "Jesús Leganés Combarro 'piranna' <piranna@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NodeOS/nodeos-mount-filesystems/issues"
+    "url": "https://github.com/NodeOS/nodeos-mount-singleUser/issues"
   },
-  "homepage": "https://github.com/NodeOS/nodeos-mount-filesystems",
+  "homepage": "https://github.com/NodeOS/nodeos-mount-singleUser",
   "dependencies": {
     "async": "^2.0.1",
+    "linux-cmdline": "^1.0.0",
     "mkdirp": "^0.5.1",
+    "nodeos-boot-singleUser": "^0.4.0",
     "nodeos-mount-utils": "^0.2.0",
-    "rimraf": "^2.5.4",
-    "prompt": "*"
+    "prompt": "*",
+    "rimraf": "^2.5.4"
   },
   "peerDependencies": {
     "jocker": "^0.0.0"

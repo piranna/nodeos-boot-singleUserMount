@@ -97,13 +97,13 @@ function mountUsersFS(mountpoint, cmdline, callback)
     })
 
   // Users filesystem is not defined, launch a Node.js REPL
-  fs.readFile(`${__dirname}/../resources/readonly_warning.txt`, 'utf8',
+  fs.readFile(`${__dirname}/readonly_warning.txt`, 'utf8',
   function(error, data)
   {
     if(error) return callback(error)
 
     console.warn(data)
-    utils.startRepl('NodeOS-mount-filesystems')
+    utils.startRepl('NodeOS-boot-singleUserMount')
   })
 }
 
