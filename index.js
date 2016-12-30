@@ -1,8 +1,9 @@
 const fs      = require('fs')
 const resolve = require('path').resolve
 
-const prompt = require('prompt')
-const utils  = require('nodeos-mount-utils')
+const evaluate_spec = require('libblkid').evaluate_spec
+const prompt        = require('prompt')
+const utils         = require('nodeos-mount-utils')
 
 const flags     = utils.flags
 const MS_NODEV  = flags.MS_NODEV
@@ -83,6 +84,9 @@ function mountUsersFS(mountpoint, cmdline, callback)
 
   // Running on a container (Docker, vagga), don't mount the users filesystem
   if(usersDev === 'container') return callback()
+
+  // Get device from label
+  usersDev = evaluate_spec(usersDev)
 
   // Running on real hardware or virtual machine, mount the users filesystem
   if(usersDev)
