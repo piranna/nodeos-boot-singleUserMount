@@ -1,6 +1,6 @@
 {
   "name": "nodeos-boot-singleUserMount",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Prepare and mount a NodeOS single user filesystem",
   "bin": "server.js",
   "scripts": {
