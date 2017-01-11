@@ -21,7 +21,7 @@
   "homepage": "https://github.com/NodeOS/nodeos-mount-singleUser",
   "dependencies": {
     "async": "^2.1.4",
-    "libblkid": "^0.0.4",
+    "libblkid": "^0.0.5",
     "linux-cmdline": "^1.0.0",
     "mkdirp": "^0.5.1",
     "nodeos-boot-singleUser": "^0.4.2",
