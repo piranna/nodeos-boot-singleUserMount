@@ -20,14 +20,14 @@
   },
   "homepage": "https://github.com/NodeOS/nodeos-mount-singleUser",
   "dependencies": {
-    "async": "^2.1.4",
+    "async": "^2.5.0",
     "libblkid": "^0.0.5",
     "linux-cmdline": "^1.0.0",
     "mkdirp": "^0.5.1",
-    "nodeos-boot-singleUser": "^0.4.2",
+    "nodeos-boot-singleUser": "^0.5.0",
     "nodeos-mount-utils": "^0.2.0",
     "prompt": "*",
-    "rimraf": "^2.5.4"
+    "rimraf": "^2.6.1"
   },
   "peerDependencies": {
     "jocker": "^0.0.0"
