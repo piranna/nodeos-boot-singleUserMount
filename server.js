@@ -4,6 +4,7 @@ const readFile = require('fs').readFile
 
 const basicEnvironment = require('nodeos-boot-singleUser')
 const linuxCmdline     = require('linux-cmdline')
+const rimraf           = require('rimraf').sync
 const run              = require('jocker').run
 const startRepl        = require('nodeos-mount-utils').startRepl
 
@@ -44,6 +45,20 @@ basicEnvironment(function(error)
       run(MOUNTPOINT, '/init', {PATH: '/bin'}, function(error)
       {
         if(error) return onerror(error)
+
+        // Remove from initramfs the files only needed on boot to free memory
+        try
+        {
+          rimraf('/bin/nodeos-boot-singleUserMount')
+          rimraf('/init')
+          rimraf('/lib/node_modules/nodeos-boot-singleUserMount')
+          rimraf('/sbin')
+        }
+        catch(error)
+        {
+          // If `rootfs` is read-only (like in `vagga`), ignore the error
+          if(error.code !== 'EROFS') return callback(error)
+        }
 
         // KTHXBYE >^.^<
       })
